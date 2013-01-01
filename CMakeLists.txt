@@ -46,7 +46,7 @@ INCLUDE_DIRECTORIES( AFTER SYSTEM . io )
 
 # Build the core library.
 add_library( pico SHARED ${lib_sources} )
-target_link_libraries( trigraph crypto )
+target_link_libraries( pico crypto )
 
 # Add a test target that just builds the tests.
 ADD_CUSTOM_TARGET(
@@ -107,7 +107,7 @@ IF( doxygenPath )
   FILE( MAKE_DIRECTORY "${docPath}" )
   ADD_CUSTOM_TARGET(
       doc
-      ${doxygenPath} ${CMAKE_CURRENT_SOURCE_DIR}/trigraph.doxyfile
+      ${doxygenPath} ${CMAKE_CURRENT_SOURCE_DIR}/pico.doxyfile
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} )
 ELSE( doxygenPath )
     MESSAGE( "WARNING: Doxygen not found; not generating documentation." )
