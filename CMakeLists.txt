@@ -17,12 +17,14 @@ SET( PICO_DIST_NAME "pico-${PICO_VERSION}" )
 # when files are added or removed.
 #FILE( GLOB lib_sources "*.cpp" )
 SET( lib_sources
-    # None at present!
+    src/util.cpp
+    src/io/header.cpp
 )
 
 # Specify the list of tests to build.
 SET( tests
-    # None at present!
+    tests/delete_test
+    tests/header_test
 )
 
 # Specify the C++ and C example programs.
@@ -42,29 +44,28 @@ ENDIF( NOT CMAKE_BUILD_TYPE )
 SET( CMAKE_CXX_FLAGS "-g -Wall" )
 
 # Modify the include path so we can find out own include files.
-INCLUDE_DIRECTORIES( AFTER SYSTEM . io )
+INCLUDE_DIRECTORIES( AFTER SYSTEM src src/io )
 
 # Build the core library.
 add_library( pico SHARED ${lib_sources} )
-target_link_libraries( pico crypto )
+target_link_libraries( pico ssl )
 
 # Add a test target that just builds the tests.
 ADD_CUSTOM_TARGET(
     tests
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/test
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests
 )
 
 # Add a test target that actually runs the tests.
 ADD_CUSTOM_TARGET(
     check
     ./run_tests.sh
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/test
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests
 )
 ADD_DEPENDENCIES(check tests)
 
 # Build the tests.
 FOREACH( test_exec ${tests} )
-    #STRING( REGEX REPLACE "test/(.*)\\.cpp" "\\1" test_exec ${test} )
     ADD_EXECUTABLE( ${test_exec} EXCLUDE_FROM_ALL ${test_exec}.cpp )
     TARGET_LINK_LIBRARIES( ${test_exec} pico )
     ADD_DEPENDENCIES( tests ${test_exec} )
