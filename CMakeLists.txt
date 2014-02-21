@@ -15,17 +15,12 @@ SET( PICO_DIST_NAME "pico-${PICO_VERSION}" )
 # Specify the list of source files to use to build the library here.  We could
 # use a glob, but that's not recommended, since cmake won't detect (caching)
 # when files are added or removed.
-#FILE( GLOB lib_sources "*.cpp" )
-SET( lib_sources
-    src/util.cpp
-    src/io/header.cpp
-)
+FILE(GLOB_RECURSE lib_sources RELATIVE ${CMAKE_HOME_DIRECTORY} "*.cpp")
+FILE(GLOB_RECURSE lib_tests RELATIVE ${CMAKE_HOME_DIRECTORY} "*_test.cpp")
+LIST(REMOVE_ITEM lib_sources ${lib_tests})
 
 # Specify the list of tests to build.
-SET( tests
-    tests/delete_test
-    tests/header_test
-)
+FILE(GLOB_RECURSE tests RELATIVE ${CMAKE_HOME_DIRECTORY} "tests/*_test")
 
 # Specify the C++ and C example programs.
 SET( cpp_examples
