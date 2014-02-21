@@ -28,6 +28,9 @@
 namespace pico
 {
 
+/// The magic string used in the header.
+static const char MAGIC[] = { 0x91, 0xc0 };
+
 /**
  * Encapsulate the header for a Pico-encoded file.
  *
@@ -37,50 +40,51 @@ class Header
 {
 public:
 	/// Offset to the magic string.
-	const std::streampos MAGIC_OFFSET = 0L;
+	static const off_t MAGIC_OFFSET = 0;
 	/// Length of the magic string.
-	const size_t MAGIC_LENGTH = 2;
-	/// The magic string.
-	const char MAGIC[] = { 0x91, 0xc0 };
+	static const size_t MAGIC_LENGTH = 2;
 	/// Offset to major version number.
-	const std::streampos MAJOR_OFFSET = MAGIC_OFFSET + MAGIC_LENGTH;
+	static const off_t MAJOR_OFFSET = MAGIC_OFFSET + MAGIC_LENGTH;
 	/// Length of major version number.
-	const size_t MAJOR_LENGTH = sizeof(uint16_t);
+	static const size_t MAJOR_LENGTH = sizeof(uint16_t);
 	/// Offset to minor version number.
-	const std::streampos MINOR_OFFSET = MAJOR_OFFSET + MAJOR_LENGTH;
+	static const off_t MINOR_OFFSET = MAJOR_OFFSET + MAJOR_LENGTH;
 	/// Length of minor version number.
-	const size_t MINOR_LENGTH = sizeof(uint16_t);
+	static const size_t MINOR_LENGTH = sizeof(uint16_t);
 	/// Offset to data offset.
-	const std::streampos OFFSET_OFFSET = MINOR_OFFSET + MINOR_LENGTH;
+	static const off_t OFFSET_OFFSET = MINOR_OFFSET + MINOR_LENGTH;
 	/// Length of data offset.
-	const size_t OFFSET_LENGTH = sizeof(uint16_t);
+	static const size_t OFFSET_LENGTH = sizeof(uint16_t);
 	/// Offset to hash.
-	const std::streampos HASH_OFFSET = OFFSET_OFFSET + OFFSET_LENGTH;
+	static const off_t HASH_OFFSET = OFFSET_OFFSET + OFFSET_LENGTH;
 	/// Length of hash.
-	const size_t HASH_LENGTH = MD5_DIGEST_LENGTH;
+	static const size_t HASH_LENGTH = MD5_DIGEST_LENGTH;
 	/// Offset to key length.
-	const std::streampos KEYLENGTH_OFFSET = HASH_OFFSET + HASH_LENGTH;
+	static const off_t KEYLENGTH_OFFSET = HASH_OFFSET + HASH_LENGTH;
 	/// Length of key length.
-	const size_t KEYLENGTH_LENGTH = sizeof(uint16_t);
+	static const size_t KEYLENGTH_LENGTH = sizeof(uint16_t);
 	/// Offset to key.
-	const std::streampos KEY_OFFSET = KEYLENGTH_OFFSET + KEYLENGTH_LENGTH;
+	static const off_t KEY_OFFSET = KEYLENGTH_OFFSET + KEYLENGTH_LENGTH;
 
 private:
 	/// The fixed part of the header.
 	std::vector<char> hdr;
 
 	/// The key.
-	std::vector<char> key;
+	std::vector<char> *key;
 
 	/**
 	 * Construct a new header.
 	 */
-	Header(): hdr(KEY_OFFSET - MAGIC_OFFSET) {};
+	Header(): hdr(KEY_OFFSET - MAGIC_OFFSET) {
+		// The key will be read from the header.
+		key = 0L;
+	};
 
 	/**
 	 * Dispose of a header.
 	 */
-	~Header() { delete(hdr); };
+	~Header() { delete(key); };
 
 
 };

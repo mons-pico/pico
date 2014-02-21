@@ -48,7 +48,7 @@ INCLUDE_DIRECTORIES( AFTER SYSTEM src src/io )
 
 # Build the core library.
 add_library( pico SHARED ${lib_sources} )
-target_link_libraries( pico ssl )
+target_link_libraries( pico ssl stdc++ )
 
 # Add a test target that just builds the tests.
 ADD_CUSTOM_TARGET(
