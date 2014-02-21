@@ -19,8 +19,19 @@
  * All rights reserved.
  */
 
+#include <stdint.h>
+
+
 namespace pico {
 
-}
+class KeyUtils
+{
+public:
+	/// The default size of a randomly-generated key. */
+	static const uint16_t KEYSIZE = 31;
+
+	/// The source used for random keys.  It shouldn't have to be awesome.
+
+};
 
 #endif /* KEYS_H_ */
