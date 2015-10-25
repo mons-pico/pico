@@ -1,11 +1,27 @@
 # CPico Documentation
 
-This is the documentation for the C library implementing the Pico encoding.
+This is the documentation for the C library implementing the
+[Pico encoding][mons-pico].  This is a very simple encoding designed to allow
+the contents to be easily encoded and decoded in a byte-addressible manner.
+The primary use case is packaging malware to avoid detection; it is completely
+useless as a stealth method, however, since the format is published here and
+the key is stored in the file itself.
+
+Using this approach you can have malware on your machine and perform analysis
+on it, while also having endpoint detection to protect you from - well, malware.
 
 ## License
 
-CPico is distributed under the
-[2-clause "simplified" BSD license](license.md).
+<pre>
+      _
+ _ __(_)__ ___
+| '_ \ / _/ _ \
+| .__/_\__\___/
+|_|            Pico
+</pre>
+
+CPico is Copyright (c) 2015 by Stacy Prowell, all rights reserved.  CPico is
+distributed under the [2-clause "simplified" BSD license](license.md).
 
 ## Acknowledgments
 
