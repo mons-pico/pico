@@ -3,3 +3,5 @@ theme: readthedocs
 pages:
   - Home: index.md
   - License: license.md
+  - Building: building.md
+
