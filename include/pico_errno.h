@@ -4,6 +4,19 @@
 /**
  * @file
  * Definition of error constants used in CPico.
+ *
+ * @code{text}
+ *       _
+ *  _ __(_)__ ___
+ * | '_ \ / _/ _ \
+ * | .__/_\__\___/
+ * |_|            Pico
+ * @endcode
+ *
+ * Copyright (c) 2015 by Stacy Prowell, all rights reserved.  Licensed under
+ * the BSD 2-Clause license.  See the file license that is part of this
+ * distribution.  This file may not be copied, modified, or distributed except
+ * according to those terms.
  */
 
 /**

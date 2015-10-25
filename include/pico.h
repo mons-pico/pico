@@ -4,6 +4,19 @@
 /**
  * @file
  * Public API definitions for CPico.
+ *
+ * @code{text}
+ *       _
+ *  _ __(_)__ ___
+ * | '_ \ / _/ _ \
+ * | .__/_\__\___/
+ * |_|            Pico
+ * @endcode
+ *
+ * Copyright (c) 2015 by Stacy Prowell, all rights reserved.  Licensed under
+ * the BSD 2-Clause license.  See the file license that is part of this
+ * distribution.  This file may not be copied, modified, or distributed except
+ * according to those terms.
  */
 
 #include <stdio.h>
@@ -35,7 +48,7 @@ void pico_free(void * ptr);
  * @param keylength The number of bytes in the key.
  * @param key       The key.  This value is copied; caller should deallocate.
  * @param md_length Reserve the specified number of bytes for metadata.
- * @return          The Pico data structure.  Test for @code NULL.
+ * @return          The Pico data structure.  Test for `NULL`.
  */
 PICO * pico_new(FILE * file, uint16_t keylength, uint8_t * key,
                  uint32_t md_length);
@@ -45,7 +58,7 @@ PICO * pico_new(FILE * file, uint16_t keylength, uint8_t * key,
  * will indicate an error.
  *
  * @param file      The file to open or create.
- * @return          The Pico data structure.  Test for @code NULL.
+ * @return          The Pico data structure.  Test for `NULL`.
  */
 PICO * pico_open(FILE * file);
 
@@ -66,11 +79,11 @@ void pico_finish(PICO * pico);
 
 /**
  * Returns true if the given Pico file is in an error condition, and false
- * otherwise.  Always returns true if the Pico data structure is @code NULL.
+ * otherwise.  Always returns true if the Pico data structure is `NULL`.
  *
  * @param pico      The Pico data structure.
  * @return          True iff an error was detected, or the structure is
- *                  @code NULL.
+ *                  `NULL`.
  */
 bool pico_is_error(PICO * pico);
 
@@ -86,7 +99,6 @@ pico_errno pico_get_errno(PICO * pico);
  * Get a human-readable error string from the Pico data structure.
  *
  * @param pico      The Pico data structure.
- * @param stream    The stream to get the error.
  * @return          The human-readable string.  Do not deallocate this!
  */
 char * pico_print_error(PICO * pico);
@@ -203,12 +215,12 @@ size_t pico_get_md_length(PICO * pico);
 /**
  * Extract some portion of the metadata from the header.  Note that the
  * returned value is always allocated to the provided length, and will be
- * @code NULL exactly when the length is zero or allocation fails.  If the
+ * `NULL` exactly when the length is zero or allocation fails.  If the
  * length exceeds the metadata available at the given position, then the
  * returned buffer is padded with zeros.  This is not considered an error.
  *
  * The caller is responsible for deallocating the return value using
- * @code pico_free.
+ * `pico_free`.
  *
  * @param pico      The Pico data structure.
  * @param position  The zero-based offset into the metadata.
@@ -246,7 +258,7 @@ bool pico_set_metadata(PICO * pico, uint32_t position, uint32_t length,
  * buffer is NULL then 0 is returned.
  *
  * The caller is responsible for deallocating the return value using
- * @code pico_free.
+ * `pico_free`.
  *
  * @param pico      The Pico data structure.
  * @param position  The zero-based offset into the data.

@@ -1,0 +1,83 @@
+\hypertarget{pico__defs_8h}{\section{/\+Users/ysp/pico/include/pico\+\_\+defs.h File Reference}
+\label{pico__defs_8h}\index{/\+Users/ysp/pico/include/pico\+\_\+defs.\+h@{/\+Users/ysp/pico/include/pico\+\_\+defs.\+h}}
+}
+
+
+Pico header format and definitions used in pico.  
+
+
+{\ttfamily \#include \char`\"{}pico\+\_\+errno.\+h\char`\"{}}\\*
+\subsection*{Data Structures}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{struct_p_i_c_o}{P\+I\+C\+O}
+\begin{DoxyCompactList}\small\item\em The Pico data structure. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{pico__defs_8h_a94630370ae389fb1189282fa0742f310}{\#define {\bfseries M\+A\+G\+I\+C}~(0x91c0)}\label{pico__defs_8h_a94630370ae389fb1189282fa0742f310}
+
+\item 
+\hypertarget{pico__defs_8h_a1a53b724b6de666faa8a9e0d06d1055f}{\#define {\bfseries V\+E\+R\+S\+I\+O\+N\+\_\+\+M\+A\+J\+O\+R}~1}\label{pico__defs_8h_a1a53b724b6de666faa8a9e0d06d1055f}
+
+\item 
+\hypertarget{pico__defs_8h_ae0cb52afb79b185b1bf82c7e235f682b}{\#define {\bfseries V\+E\+R\+S\+I\+O\+N\+\_\+\+M\+I\+N\+O\+R}~0}\label{pico__defs_8h_ae0cb52afb79b185b1bf82c7e235f682b}
+
+\item 
+\hypertarget{pico__defs_8h_aaee35cb7f71a122382b63f3870024840}{\#define {\bfseries M\+A\+G\+I\+C\+\_\+\+P\+O\+S}~0}\label{pico__defs_8h_aaee35cb7f71a122382b63f3870024840}
+
+\item 
+\hypertarget{pico__defs_8h_a670aa29ad0e96b31b51432c519f3fe06}{\#define {\bfseries M\+A\+J\+O\+R\+\_\+\+P\+O\+S}~(M\+A\+G\+I\+C\+\_\+\+P\+O\+S + (uint32\+\_\+t)sizeof(magic\+\_\+t))}\label{pico__defs_8h_a670aa29ad0e96b31b51432c519f3fe06}
+
+\item 
+\hypertarget{pico__defs_8h_a37ba71297556e8c7b4ddc013f3c98ea1}{\#define {\bfseries M\+I\+N\+O\+R\+\_\+\+P\+O\+S}~(M\+A\+J\+O\+R\+\_\+\+P\+O\+S + (uint32\+\_\+t)sizeof(major\+\_\+t))}\label{pico__defs_8h_a37ba71297556e8c7b4ddc013f3c98ea1}
+
+\item 
+\hypertarget{pico__defs_8h_a4c3313b0aaeeedbe87a862727a3c2cbc}{\#define {\bfseries O\+F\+F\+S\+E\+T\+\_\+\+P\+O\+S}~(M\+I\+N\+O\+R\+\_\+\+P\+O\+S + (uint32\+\_\+t)sizeof(minor\+\_\+t))}\label{pico__defs_8h_a4c3313b0aaeeedbe87a862727a3c2cbc}
+
+\item 
+\hypertarget{pico__defs_8h_a7fae27d0349ec993a006b0035d99d803}{\#define {\bfseries H\+A\+S\+H\+\_\+\+P\+O\+S}~(O\+F\+F\+S\+E\+T\+\_\+\+P\+O\+S + (uint32\+\_\+t)sizeof(offset\+\_\+t))}\label{pico__defs_8h_a7fae27d0349ec993a006b0035d99d803}
+
+\item 
+\hypertarget{pico__defs_8h_a1c98a0f4b02f4283af4233cf6e3ad121}{\#define {\bfseries H\+A\+S\+H\+\_\+\+L\+E\+N}~16}\label{pico__defs_8h_a1c98a0f4b02f4283af4233cf6e3ad121}
+
+\item 
+\hypertarget{pico__defs_8h_a660ac56d4ec69f24213a8a1eefe46412}{\#define {\bfseries K\+E\+Y\+L\+E\+N\+\_\+\+P\+O\+S}~(H\+A\+S\+H\+\_\+\+P\+O\+S + H\+A\+S\+H\+\_\+\+L\+E\+N)}\label{pico__defs_8h_a660ac56d4ec69f24213a8a1eefe46412}
+
+\item 
+\hypertarget{pico__defs_8h_a46d0be2e9259e039d2a819505d59435e}{\#define {\bfseries K\+E\+Y\+\_\+\+P\+O\+S}~(K\+E\+Y\+L\+E\+N\+\_\+\+P\+O\+S + (uint32\+\_\+t)sizeof(keylen\+\_\+t))}\label{pico__defs_8h_a46d0be2e9259e039d2a819505d59435e}
+
+\item 
+\hypertarget{pico__defs_8h_af056f067529182990a08c378c3e3f800}{\#define {\bfseries N\+T\+O\+H}(m\+\_\+type, m\+\_\+item)~(m\+\_\+type)(sizeof(m\+\_\+type) == 2 ? ntohs(m\+\_\+item) \+: ntohl(m\+\_\+item))}\label{pico__defs_8h_af056f067529182990a08c378c3e3f800}
+
+\item 
+\hypertarget{pico__defs_8h_a1126348571b781b2b8815147035a4145}{\#define {\bfseries H\+T\+O\+N}(m\+\_\+type, m\+\_\+item)~(m\+\_\+type)(sizeof(m\+\_\+type) == 2 ? htons(m\+\_\+item) \+: htonl(m\+\_\+item))}\label{pico__defs_8h_a1126348571b781b2b8815147035a4145}
+
+\end{DoxyCompactItemize}
+\subsection*{Typedefs}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{pico__defs_8h_af37f1a099327a0df857010f83d9588f5}{typedef uint16\+\_\+t {\bfseries magic\+\_\+t}}\label{pico__defs_8h_af37f1a099327a0df857010f83d9588f5}
+
+\item 
+\hypertarget{pico__defs_8h_ac04d8cfe1967da20697d9e015f7134ed}{typedef uint16\+\_\+t {\bfseries major\+\_\+t}}\label{pico__defs_8h_ac04d8cfe1967da20697d9e015f7134ed}
+
+\item 
+\hypertarget{pico__defs_8h_a197574f936f2f8a83f5d4c400191f975}{typedef uint16\+\_\+t {\bfseries minor\+\_\+t}}\label{pico__defs_8h_a197574f936f2f8a83f5d4c400191f975}
+
+\item 
+\hypertarget{pico__defs_8h_a5883b60eda35e8f8d370ececc9f820ef}{typedef uint32\+\_\+t {\bfseries offset\+\_\+t}}\label{pico__defs_8h_a5883b60eda35e8f8d370ececc9f820ef}
+
+\item 
+\hypertarget{pico__defs_8h_a31b28b31989c11dbec945fcd391dbab5}{typedef uint16\+\_\+t {\bfseries keylen\+\_\+t}}\label{pico__defs_8h_a31b28b31989c11dbec945fcd391dbab5}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Pico header format and definitions used in pico. 
+
+
+
+Definition in file \hyperlink{pico__defs_8h_source}{pico\+\_\+defs.\+h}.
+

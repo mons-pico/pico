@@ -1,10 +1,36 @@
+/**
+ * @file
+ * The Pico command line executable.
+ *
+ * @code{text}
+ *       _
+ *  _ __(_)__ ___
+ * | '_ \ / _/ _ \
+ * | .__/_\__\___/
+ * |_|            Pico
+ * @endcode
+ *
+ * Copyright (c) 2015 by Stacy Prowell, all rights reserved.  Licensed under
+ * the BSD 2-Clause license.  See the file license that is part of this
+ * distribution.  This file may not be copied, modified, or distributed except
+ * according to those terms.
+ */
+
 #include <getopt.h>
 #include <string.h>
 #include <pico.h>
 
-void
+/**
+ * Print usage information for the command line executable.
+ *
+ * @param name    The name of the executable, from the command line arguments.
+ */
+static void
 print_usage(char * name) {
     fprintf(stdout, "usage: %s [flags] [input files...]\n", name);
+    fprintf(stdout, "Encode a file as Pico, decode a Pico-encoded file, or dump the header\n");
+    fprintf(stdout, "from a Pico-encoded file.\n");
+    fprintf(stdout, "\n");
     fprintf(stdout, "Flags:\n");
     fprintf(stdout, "  -d / --decode ............ Decode files.\n");
     fprintf(stdout, "  -e / --encode ............ Encode files (default).\n");
@@ -14,15 +40,25 @@ print_usage(char * name) {
     fprintf(stdout, "  -s / --suffix=[suffix] ... Suffix to add to output files.\n");
     fprintf(stdout, "\n");
     //               0123456789012345678901234567890123456789012345678901234567890123456789
-    fprintf(stdout, "Input files are read and (de/en)coded.  If encoding, a .pico extension\n");
-    fprintf(stdout, "is added to the file.  If decoding, a .raw extension is added to the\n");
-    fprintf(stdout, "the file.  The extension used can be overridden by --extension.  Any\n");
-    fprintf(stdout, "provided suffix is added to the file's base name.\n");
+    fprintf(stdout, "Input files are encoded by default.  If encoding, a .pico extension is added to\n");
+    fprintf(stdout, "the file.  If decoding, then the input must be Pico-encoded files, and a .raw\n");
+    fprintf(stdout, "extension is added by default.  If dumping the header, the input files must be\n");
+    fprintf(stdout, "Pico-encoded files, and the header is dumped as JSON to standard output.\n");
     fprintf(stdout, "\n");
-    fprintf(stdout, "Pico encoding version: %d.%d.\n",
-        VERSION_MAJOR, VERSION_MINOR);
+    fprintf(stdout, "The extension used can be overridden by --extension, which should include the\n");
+    fprintf(stdout, "dot.  Any provided suffix (by default there is none) is added to the file's\n");
+    fprintf(stdout, "base name.\n");
+    fprintf(stdout, "\n");
+    fprintf(stdout, "Pico encoding version: %d.%d.\n", VERSION_MAJOR, VERSION_MINOR);
 }
 
+/**
+ * Entry point when started from the command line.
+ *
+ * @param argc    Number of command line arguments.
+ * @param argv    Command line arguments.
+ * @return        Exit value.
+ */
 int
 main(int argc, char * argv[]) {
     // Information we get from the command line.

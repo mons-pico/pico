@@ -1,6 +1,19 @@
 /**
  * @file
  * Implementation and private API for CPico.
+ *
+ * @code{text}
+ *       _
+ *  _ __(_)__ ___
+ * | '_ \ / _/ _ \
+ * | .__/_\__\___/
+ * |_|            Pico
+ * @endcode
+ *
+ * Copyright (c) 2015 by Stacy Prowell, all rights reserved.  Licensed under
+ * the BSD 2-Clause license.  See the file license that is part of this
+ * distribution.  This file may not be copied, modified, or distributed except
+ * according to those terms.
  */
 
 #include <stdio.h>
@@ -27,10 +40,23 @@ static magic_t magic = MAGIC;
 // nedmalloc, or something else.  Note that to do this you simply
 // need to include the appropriate header and then \#define MALLOC
 // and FREE before you include this file.
+
 #ifndef MALLOC
+/**
+ * Allocate memory.
+ * @param m_thing     The thing to allocate.  A pointer to this type is
+ *                    returned.
+ * @param m_number    How many things to allocate.
+ * @return            A pointer to the allocated things.
+ */
 #define MALLOC(m_thing, m_number) (m_thing *)calloc(m_number, sizeof(m_thing))
 #endif
 #ifndef FREE
+/**
+ * Free a pointer.  NULL pointers are ignored.
+ *
+ * @param m_ptr       Pointer to the thing to deallocate.
+ */
 #define FREE(m_ptr) ((m_ptr == NULL) ? NULL : free(m_ptr), NULL)
 #endif
 
@@ -38,8 +64,6 @@ void
 pico_free(void * ptr) {
     FREE(ptr);
 }
-
-void pico_dump_header(PICO * pico, FILE * out);
 
 /**
  * Print a region of memory as comma-separated hex values.
@@ -159,7 +183,6 @@ pico_new(FILE * file, uint16_t keylength, uint8_t * key, uint32_t md_length) {
     pico->errno = OK;
     pico->md_length = 0;
     pico->data_length = 0;
-    pico_dump_header(pico, stdout);
 
     // Save the key.
     pico->key_length = keylength;
@@ -284,8 +307,7 @@ read_header(PICO * pico) {
     }
     if (pico->offset < KEY_POS + pico->key_length) {
         pico->errno = BAD_OFFSET;
-        sprintf(pico->error_text, "Offset is too small (%ld < %ld).",
-                pico->offset, KEY_POS + pico->key_length);
+        sprintf(pico->error_text, "Offset is too small.");
         return true;
     }
 
@@ -581,8 +603,6 @@ pico_set(PICO * pico, size_t position, size_t length, uint8_t * data) {
 //======================================================================
 // Pico whole file operations.
 //======================================================================
-
-#define CHUNK_SIZE 4096
 
 /**
  * Print an error message.  This works like fprintf.
