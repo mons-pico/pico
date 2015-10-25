@@ -1,0 +1,5 @@
+site_name: CPico Documentation
+theme: readthedocs
+pages:
+  - Home: index.md
+  - License: license.md
