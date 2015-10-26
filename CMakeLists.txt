@@ -1,9 +1,9 @@
 # Configuration file to build cpico.
 
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 2.8)
 project(cpico)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
 
 include_directories(AFTER SYSTEM include)
 set(LIBRARY_FILES src/pico.c include/pico_errno.h include/pico_defs.h)
