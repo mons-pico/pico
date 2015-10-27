@@ -22,8 +22,8 @@
 #include <stdbool.h>
 #include <string.h>
 #include <inttypes.h>
-#include <pico_errno.h>
-#include <pico_defs.h>
+#include <openssl/md5.h>
+#include <pico.h>
 
 /// Local magic number, so we can reference it by pointer.
 static magic_t magic = MAGIC;
@@ -119,6 +119,144 @@ printint(void *thing, size_t length, bool hex, FILE *out) {
     }
 }
 
+/**
+ * Encrypt or decrypt the data in place using the provided key.
+ * @param data         The data to encrypt or decrypt.
+ * @param len          Length of the data array.
+ * @param key          The encryption key.
+ * @param keylen       The number of bytes in the key.
+ * @param position     The position of the data in the overall data stream.
+ * @return             The data.
+ */
+uint8_t * crypt(uint8_t * data, size_t len, uint8_t * key, keylen_t keylen,
+                size_t position) {
+    for (size_t index = 0; index < len; index++) {
+        data[index] ^= key[(size_t)(index+position) % keylen];
+    } /* Process all bytes. */
+    return data;
+}
+
+//======================================================================
+// Pico header information.
+//======================================================================
+
+magic_t
+pico_magic() {
+    return magic;
+}
+
+major_t
+pico_major() {
+    return VERSION_MAJOR;
+}
+
+minor_t
+pico_minor() {
+    return VERSION_MINOR;
+}
+
+major_t
+pico_get_major(PICO * pico) {
+    if (pico != NULL) return pico->major; else return 0;
+}
+
+minor_t
+pico_get_minor(PICO * pico) {
+    if (pico != NULL) return pico->minor; else return 0;
+}
+
+offset_t
+pico_get_offset(PICO * pico) {
+    if (pico != NULL) return pico->offset; else return 0;
+}
+
+uint8_t *
+pico_get_hash(PICO * pico) {
+    if (pico == NULL) return NULL;
+
+    // See if the hash is valid, or if we need to re-compute it.
+    if (pico->hash_valid) return pico->hash;
+
+    // We have to re-compute the hash.  To do this, read back
+    // through the entire file and compute the hash.  Then store
+    // it in the header and write the header back to the file.
+
+    // Seek the start.
+    if (fseek(pico->file, 0, SEEK_SET)) {
+        pico->errno = CANNOT_SEEK;
+        sprintf(pico->error_text, "Unable to seek to start of file.");
+        return NULL;
+    }
+
+    // Initialize the hash computation.
+    MD5_CTX md5data;
+    MD5_Init(&md5data);
+
+    // Compute the hash over the decoded data.
+    size_t position = 0;
+    size_t bytes = 0;
+    uint8_t * data = MALLOC(uint8_t, CHUNK_SIZE);
+    while ((bytes = pico_get(pico, position, CHUNK_SIZE, data)) != 0) {
+        MD5_Update(&md5data, data, bytes);
+        position += bytes;
+    } // Compute the hash over all bytes.
+
+    // Done.
+    MD5_Final(pico->hash, &md5data);
+
+    // The hash is now valid!
+    pico->hash_valid = true;
+    return pico->hash;
+}
+
+keylen_t
+pico_get_key_length(PICO * pico) {
+    if (pico != NULL) return pico->key_length; else return 0;
+}
+
+uint8_t *
+pico_get_key(PICO * pico) {
+    if (pico != NULL) return pico->key; else return NULL;
+}
+
+void
+pico_dump_header(PICO * pico, FILE * out) {
+    if (pico == NULL) return;
+    if (out == NULL) return;
+
+    // Write the header information as JSON.
+    fprintf(out, "\"pico\" = {\n");
+    fprintf(out, "    \"magic\" = [ ");
+    hexify(&magic, sizeof(magic_t), out);
+    fprintf(out, " ];\n");
+
+    fprintf(out, "    \"major\" = ");
+    printint(&pico->major, sizeof(major_t), false, out);
+    fprintf(out, ";\n");
+
+    fprintf(out, "    \"minor\" = ");
+    printint(&pico->minor, sizeof(minor_t), false, out);
+    fprintf(out, ";\n");
+
+    fprintf(out, "    \"offset\" = ");
+    printint(&pico->offset, sizeof(offset_t), true, out);
+    fprintf(out, ";\n");
+
+    fprintf(out, "    \"hash\" = [ ");
+    hexify(pico->hash, HASH_LEN, out);
+    fprintf(out, " ];\n");
+
+    fprintf(out, "    \"key_length\" = ");
+    printint(&pico->key_length, sizeof(keylen_t), true, out);
+    fprintf(out, ";\n");
+
+    fprintf(out, "    \"key\" = [ ");
+    hexify(pico->key, pico->key_length, out);
+    fprintf(out, " ];\n");
+
+    fprintf(out, "}\n");
+}
+
 //======================================================================
 // Pico file handling.
 //======================================================================
@@ -131,6 +269,9 @@ printint(void *thing, size_t length, bool hex, FILE *out) {
  */
 static bool
 write_header(PICO * pico) {
+    // If necessary, update the hash.
+    if (pico_get_hash(pico) == NULL) return true;
+
     // Seek to the start of the file.
     TRY (fseek(pico->file, 0, SEEK_SET)) {
         pico->errno = CANNOT_SEEK;
@@ -333,21 +474,24 @@ pico_open(FILE * file) {
     return pico;
 }
 
-void
+pico_errno
 pico_finish(PICO * pico) {
-    if (pico == NULL) return;
+    if (pico == NULL) return false;
     if (pico->file != NULL) {
+        if (!pico->hash_valid) write_header(pico);
         if (fflush(pico->file)) {
             pico->errno = CANNOT_WRITE;
             sprintf(pico->error_text, "Unable to flush stream.");
+        } else {
+            pico->file = NULL;
+            pico->errno = OK;
         }
-        pico->file = NULL;
-        pico->errno = OK;
     }
     pico->key_length = 0;
     pico_free(pico->key);
     pico->key = NULL;
     pico_free(pico);
+    return pico->errno;
 }
 
 //======================================================================
@@ -372,93 +516,6 @@ pico_print_error(PICO * pico) {
 void
 pico_clear_error(PICO * pico) {
     pico->errno = OK;
-}
-
-//======================================================================
-// Pico header information.
-//======================================================================
-
-magic_t
-pico_magic() {
-    return magic;
-}
-
-major_t
-pico_major() {
-    return VERSION_MAJOR;
-}
-
-minor_t
-pico_minor() {
-    return VERSION_MINOR;
-}
-
-major_t
-pico_get_major(PICO * pico) {
-    if (pico != NULL) return pico->major; else return 0;
-}
-
-minor_t
-pico_get_minor(PICO * pico) {
-    if (pico != NULL) return pico->minor; else return 0;
-}
-
-offset_t
-pico_get_offset(PICO * pico) {
-    if (pico != NULL) return pico->offset; else return 0;
-}
-
-uint8_t *
-pico_get_hash(PICO * pico) {
-    if (pico != NULL) return pico->hash; else return NULL;
-}
-
-keylen_t
-pico_get_key_length(PICO * pico) {
-    if (pico != NULL) return pico->key_length; else return 0;
-}
-
-uint8_t *
-pico_get_key(PICO * pico) {
-    if (pico != NULL) return pico->key; else return NULL;
-}
-
-void
-pico_dump_header(PICO * pico, FILE * out) {
-    if (pico == NULL) return;
-    if (out == NULL) return;
-
-    // Write the header information as JSON.
-    fprintf(out, "\"pico\" = {\n");
-    fprintf(out, "    \"magic\" = [ ");
-    hexify(&magic, sizeof(magic_t), out);
-    fprintf(out, " ];\n");
-
-    fprintf(out, "    \"major\" = ");
-    printint(&pico->major, sizeof(major_t), false, out);
-    fprintf(out, ";\n");
-
-    fprintf(out, "    \"minor\" = ");
-    printint(&pico->minor, sizeof(minor_t), false, out);
-    fprintf(out, ";\n");
-
-    fprintf(out, "    \"offset\" = ");
-    printint(&pico->offset, sizeof(offset_t), true, out);
-    fprintf(out, ";\n");
-
-    fprintf(out, "    \"hash\" = [ ");
-    hexify(pico->hash, HASH_LEN, out);
-    fprintf(out, " ];\n");
-
-    fprintf(out, "    \"key_length\" = ");
-    printint(&pico->key_length, sizeof(keylen_t), true, out);
-    fprintf(out, ";\n");
-
-    fprintf(out, "    \"key\" = [ ");
-    hexify(pico->key, pico->key_length, out);
-    fprintf(out, " ];\n");
-
-    fprintf(out, "}\n");
 }
 
 //======================================================================
@@ -531,23 +588,6 @@ pico_set_metadata(PICO * pico, offset_t position, offset_t length,
 // Pico data access.
 //======================================================================
 
-/**
- * Encrypt or decrypt the data in place using the provided key.
- * @param data         The data to encrypt or decrypt.
- * @param len          Length of the data array.
- * @param key          The encryption key.
- * @param keylen       The number of bytes in the key.
- * @param position     The position of the data in the overall data stream.
- * @return             The data.
- */
-uint8_t * crypt(uint8_t * data, size_t len, uint8_t * key, keylen_t keylen,
-                size_t position) {
-    for (size_t index = 0; index < len; index++) {
-        data[index] ^= key[(size_t)(index+position) % keylen];
-    } /* Process all bytes. */
-    return data;
-}
-
 size_t
 pico_get(PICO * pico, size_t position, size_t length, uint8_t * buffer) {
     if (length == 0 || buffer == NULL || pico == NULL) return 0;
@@ -560,13 +600,14 @@ pico_get(PICO * pico, size_t position, size_t length, uint8_t * buffer) {
     fseek(pico->file, 0, SEEK_END);
     size_t bytes = ftell(pico->file) - start;
     if (length < bytes) bytes = length;
+    if (bytes == 0) return 0;
 
     // Perform a read of the encoded bytes.
     if (fseek(pico->file, start, SEEK_SET) ||
         fread(buffer, 1, bytes, pico->file) != bytes) {
         pico->errno = CANNOT_READ;
         sprintf(pico->error_text, "Cannot read data.");
-        return bytes;
+        return 0;
     }
     pico->errno = OK;
 

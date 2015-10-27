@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <pico_defs.h>
+#include <pico_errno.h>
 
 
 //======================================================================
@@ -35,80 +36,6 @@
  * library be freed using this method.  DO NOT USE FREE!
  */
 void pico_free(void * ptr);
-
-//======================================================================
-// Pico file handling.
-//======================================================================
-
-/**
- * Create a Pico-encoded file, opened empty.  If the file exists prior to this
- * call, it will be overwritten.
- *
- * @param file      The file to create.
- * @param keylength The number of bytes in the key.
- * @param key       The key.  This value is copied; caller should deallocate.
- * @param md_length Reserve the specified number of bytes for metadata.
- * @return          The Pico data structure.  Test for `NULL`.
- */
-PICO * pico_new(FILE * file, uint16_t keylength, uint8_t * key,
-                 uint32_t md_length);
-
-/**
- * Open a Pico-encoded file.  If the file does not exist the returned value
- * will indicate an error.
- *
- * @param file      The file to open or create.
- * @return          The Pico data structure.  Test for `NULL`.
- */
-PICO * pico_open(FILE * file);
-
-/**
- * Flush any data to the file and deallocate the Pico data structure.
- * Do not use `pico_free` or you will get a memory leak.  This does not
- * close the underlying stream.
- *
- * Do not use the pico data structure after this; it is invalid.
- *
- * @param pico      The Pico data structure.
- */
-void pico_finish(PICO * pico);
-
-//======================================================================
-// Pico error handling.
-//======================================================================
-
-/**
- * Returns true if the given Pico file is in an error condition, and false
- * otherwise.  Always returns true if the Pico data structure is `NULL`.
- *
- * @param pico      The Pico data structure.
- * @return          True iff an error was detected, or the structure is
- *                  `NULL`.
- */
-bool pico_is_error(PICO * pico);
-
-/**
- * Get the current error state from the Pico data structure.
- *
- * @param pico      The Pico data structure.
- * @return          The current error value.
- */
-pico_errno pico_get_errno(PICO * pico);
-
-/**
- * Get a human-readable error string from the Pico data structure.
- *
- * @param pico      The Pico data structure.
- * @return          The human-readable string.  Do not deallocate this!
- */
-char * pico_print_error(PICO * pico);
-
-/**
- * Clear any error condition in the given Pico data structure.
- *
- * @param pico      The Pico data structure.
- */
-void pico_clear_error(PICO * pico);
 
 //======================================================================
 // Pico header information.
@@ -199,6 +126,81 @@ uint8_t * pico_get_key(PICO * pico);
  * @param out       An output stream.
  */
 void pico_dump_header(PICO * pico, FILE * out);
+
+//======================================================================
+// Pico file handling.
+//======================================================================
+
+/**
+ * Create a Pico-encoded file, opened empty.  If the file exists prior to this
+ * call, it will be overwritten.
+ *
+ * @param file      The file to create.
+ * @param keylength The number of bytes in the key.
+ * @param key       The key.  This value is copied; caller should deallocate.
+ * @param md_length Reserve the specified number of bytes for metadata.
+ * @return          The Pico data structure.  Test for `NULL`.
+ */
+PICO * pico_new(FILE * file, uint16_t keylength, uint8_t * key,
+                 uint32_t md_length);
+
+/**
+ * Open a Pico-encoded file.  If the file does not exist the returned value
+ * will indicate an error.
+ *
+ * @param file      The file to open or create.
+ * @return          The Pico data structure.  Test for `NULL`.
+ */
+PICO * pico_open(FILE * file);
+
+/**
+ * Flush any data to the file and deallocate the Pico data structure.
+ * Do not use `pico_free` or you will get a memory leak.  This does not
+ * close the underlying stream.
+ *
+ * Do not use the pico data structure after this; it is invalid.
+ *
+ * @param pico      The Pico data structure.
+ * @return          The last error code generated.
+ */
+pico_errno pico_finish(PICO * pico);
+
+//======================================================================
+// Pico error handling.
+//======================================================================
+
+/**
+ * Returns true if the given Pico file is in an error condition, and false
+ * otherwise.  Always returns true if the Pico data structure is `NULL`.
+ *
+ * @param pico      The Pico data structure.
+ * @return          True iff an error was detected, or the structure is
+ *                  `NULL`.
+ */
+bool pico_is_error(PICO * pico);
+
+/**
+ * Get the current error state from the Pico data structure.
+ *
+ * @param pico      The Pico data structure.
+ * @return          The current error value.
+ */
+pico_errno pico_get_errno(PICO * pico);
+
+/**
+ * Get a human-readable error string from the Pico data structure.
+ *
+ * @param pico      The Pico data structure.
+ * @return          The human-readable string.  Do not deallocate this!
+ */
+char * pico_print_error(PICO * pico);
+
+/**
+ * Clear any error condition in the given Pico data structure.
+ *
+ * @param pico      The Pico data structure.
+ */
+void pico_clear_error(PICO * pico);
 
 //======================================================================
 // Pico metadata information.
