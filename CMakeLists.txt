@@ -1,10 +1,10 @@
 # Configuration file to build cpico.
 
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 2.8)
 project(cpico)
 set(ADDITIONAL_LIBS "")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
 
 # Need to link with the OpenSSL library.
 find_package(OpenSSL REQUIRED)
@@ -19,6 +19,7 @@ add_library(pico ${LIBRARY_FILES})
 add_executable(pico-bin src/main.c)
 target_link_libraries(pico-bin pico ${ADDITIONAL_LIBS})
 set_target_properties(pico-bin PROPERTIES OUTPUT_NAME pico)
+set_property(TARGET pico PROPERTY POSITION_INDEPENDENT_CODE 1)
 
 # Generate API documentation using Doxygen.
 find_package(Doxygen)
