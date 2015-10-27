@@ -1,15 +1,21 @@
 # Configuration file to build cpico.
 
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 2.8)
 project(cpico)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
 
 include_directories(AFTER SYSTEM include)
 set(LIBRARY_FILES src/pico.c include/pico_errno.h include/pico_defs.h)
-add_library(libcpico ${LIBRARY_FILES})
+add_library(cpico_static STATIC ${LIBRARY_FILES})
+add_library(cpico_shared SHARED ${LIBRARY_FILES})
+set_property( TARGET cpico_static PROPERTY POSITION_INDEPENDENT_CODE 1 )
+if( UNIX )
+    set_target_properties(cpico_shared PROPERTIES OUTPUT_NAME cpico)
+    set_target_properties(cpico_static PROPERTIES OUTPUT_NAME cpico)
+endif ( UNIX )
 add_executable(cpico src/main.c)
-target_link_libraries(cpico libcpico)
+target_link_libraries(cpico cpico_static)
 
 # Generate API documentation using Doxygen.
 find_package(Doxygen)
