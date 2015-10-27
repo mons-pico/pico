@@ -19,6 +19,9 @@
  * according to those terms.
  */
 
+#ifdef __linux__
+#include <arpa/inet.h>
+#endif //__linux__
 #include "pico_errno.h"
 
 /// Pico file magic number.
