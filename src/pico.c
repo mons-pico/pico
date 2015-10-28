@@ -30,7 +30,7 @@
  * The debugging level.  Right now there are two levels: 0 (suppress) and 1
  * (emit debugging information).
  */
-int debug = 0;
+int pico_debug = 0;
 
 /**
  * Print an error message.  This works like fprintf.
@@ -831,7 +831,7 @@ encode_file(char * infile, char * outfile,  keylen_t key_length, uint8_t * key,
 }
 
 pico_errno
-decode_file(char * infile, char * outfile, bool header, FILE * err) {
+decode_file(char * infile, char * outfile, FILE * err) {
     if (infile == NULL) {
         ERR(err, "ERROR: Input file name is NULL.\n");
         return USAGE;

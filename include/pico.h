@@ -34,7 +34,7 @@
  * This is the global debugging flag.  Right now there are two settings:
  * 0 suppresses, and 1 enables.  The default is zero.
  */
-extern int debug;
+extern int pico_debug;
 
 //#define TOKENPASTE(x, y) x ## y
 //#define TOKENPASTE2(x, y) TOKENPASTE(x, y)
@@ -44,7 +44,7 @@ extern int debug;
  * @param m_fmt         The format string which must be a string literal.
  */
 #define DEBUG(m_fmt, ...) \
-    fprintf(stderr, "DEBUG (%s:%d): " m_fmt "\n", \
+    if (pico_debug) fprintf(stderr, "DEBUG (%s:%d): " m_fmt "\n", \
         __FILE__, __LINE__, ## __VA_ARGS__);
 
 /**
@@ -345,10 +345,9 @@ pico_errno encode_file(char * infile, char * outfile,
  * Decode an entire file.
  * @param infile    The input file name.
  * @param outfile   The output file name.
- * @param header    If true, write header information to standard out.
  * @param err       A stream to get error messages.  If NULL, suppressed.
  * @return          The last error code.
  */
-pico_errno decode_file(char * infile, char * outfile, bool header, FILE * err);
+pico_errno decode_file(char * infile, char * outfile, FILE * err);
 
 #endif //PICO_H

@@ -4,4 +4,6 @@ pages:
   - Home: index.md
   - License: license.md
   - Building: building.md
+  - Basics: basics.md
+  - Library: library.md
 

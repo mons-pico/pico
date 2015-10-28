@@ -19,7 +19,6 @@
 #include <getopt.h>
 #include <string.h>
 #include <pico.h>
-#include <pico_defs.h>
 
 /**
  * Print usage information for the command line executable.
@@ -134,7 +133,7 @@ main(int argc, char * argv[]) {
                 if (strcmp("extension", longopts[argument].name) == 0) {
                     extension = optarg;
                 } else if (strcmp("debug", longopts[argument].name) == 0) {
-                    debug = 1;
+                    pico_debug = 1;
                     fprintf(stdout, "Debugging enabled.\n");
                 }
                 break;
@@ -152,7 +151,7 @@ main(int argc, char * argv[]) {
         extension = (encode ? ".pico" : ".raw");
     }
 
-    if (debug) {
+    if (pico_debug) {
         DEBUG("Encoding: %d", encode);
         DEBUG("Suffix: %s", suffix);
         DEBUG("Header: %d", header);
@@ -228,7 +227,7 @@ main(int argc, char * argv[]) {
         // Process the file.
         if (encode) encode_file(argv[index], outname, keylen, key,
                                 md_length, stderr);
-        else decode_file(argv[index], outname, header, stderr);
+        else decode_file(argv[index], outname, stderr);
     } // Process all files.
     return 0;
 }
