@@ -212,7 +212,7 @@ main(int argc, char * argv[]) {
 
         // Watch for clobbering.
         if (strcmp(outname, argv[index]) == 0) {
-            fprintf(stderr, "Refusing to overwrite input file %s.\n",
+            fprintf(stderr, "WARNING: Refusing to overwrite input file %s.\n",
                     argv[index]);
             continue;
         }
@@ -225,9 +225,24 @@ main(int argc, char * argv[]) {
         }
 
         // Process the file.
-        if (encode) encode_file(argv[index], outname, keylen, key,
-                                md_length, stderr);
-        else decode_file(argv[index], outname, stderr);
+        if (encode) {
+            pico_errno errno =
+                    pico_encode_file(argv[index], outname, keylen, key,
+                                     md_length, stderr);
+            if (errno != OK) {
+                fprintf(stderr, "ERROR: Error detected on file encode.\n");
+            }
+        } else {
+            pico_errno errno =
+                    pico_decode_file(argv[index], outname, true, stderr);
+            if (errno != OK) {
+                if (errno == HASH_ERROR) {
+                    fprintf(stderr, "WARNING: Decoded hash does not match.\n");
+                } else {
+                    fprintf(stderr, "ERROR: Error detected on file decode.\n");
+                }
+            }
+        }
     } // Process all files.
     return 0;
 }

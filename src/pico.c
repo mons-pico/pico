@@ -763,8 +763,8 @@ pico_set(PICO * pico, size_t position, size_t length, uint8_t * data) {
 //======================================================================
 
 pico_errno
-encode_file(char * infile, char * outfile,  keylen_t key_length, uint8_t * key,
-            offset_t md_length, FILE * err) {
+pico_encode_file(char *infile, char *outfile, keylen_t key_length, uint8_t *key,
+                 offset_t md_length, FILE *err) {
     if (infile == NULL) {
         ERR(err, "ERROR: Input file name is NULL.\n");
         return USAGE;
@@ -831,7 +831,7 @@ encode_file(char * infile, char * outfile,  keylen_t key_length, uint8_t * key,
 }
 
 pico_errno
-decode_file(char * infile, char * outfile, FILE * err) {
+pico_decode_file(char *infile, char *outfile, bool testhash, FILE *err) {
     if (infile == NULL) {
         ERR(err, "ERROR: Input file name is NULL.\n");
         return USAGE;
@@ -872,6 +872,11 @@ decode_file(char * infile, char * outfile, FILE * err) {
         return pico->errno;
     }
 
+    // Initialize the hash computation.
+    uint8_t hash[HASH_LEN];
+    MD5_CTX md5data;
+    if (testhash) MD5_Init(&md5data);
+
     // Read and copy chunks until we fail to read.
     size_t count = 0;
     size_t position = 0;
@@ -880,6 +885,7 @@ decode_file(char * infile, char * outfile, FILE * err) {
         count = pico_get(pico, position, CHUNK_SIZE, buffer);
         if (count == 0) break;
         if (pico_is_error(pico)) {
+            if (testhash) MD5_Final(hash, &md5data);
             pico_finish(pico);
             fclose(fin);
             fflush(fout);
@@ -887,16 +893,29 @@ decode_file(char * infile, char * outfile, FILE * err) {
             ERR(err, "ERROR: %s\n", pico->error_text);
             return pico->errno;
         }
+        if (testhash) MD5_Update(&md5data, buffer, count);
 
         // Write a chunk.
         fwrite(buffer, 1, count, fout);
         position += count;
     } while (count == CHUNK_SIZE);
 
+    // Check the hash.
+    if (testhash) {
+        bool hash_match = true;
+        MD5_Final(hash, &md5data);
+        for (size_t index = 0; index < HASH_LEN; ++index) {
+            if (hash[index] != pico->hash[index]) {
+                // Hash mismatch.
+                hash_match = false;
+            }
+        } // Loop over hash bytes.
+    }
+
     // Done.
     pico_finish(pico);
     fclose(fin);
     fflush(fout);
     fclose(fout);
-    return OK;
+    return hash_match ? OK : HASH_ERROR;
 }

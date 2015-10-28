@@ -32,6 +32,7 @@ typedef enum {
     NO_MEMORY,          //< The system could not provide requested memory.
     KEY_ERROR,          //< The key was NULL or length zero.
     BAD_OFFSET,         //< The offset in the header is incorrect.
+    HASH_ERROR,         //< The hash does not match the decoded bytes.
     USAGE,              //< Incorrect arguments to the whole-file API.
 //    HRUNG,              //< A Hrung collapsed.
 } pico_errno;

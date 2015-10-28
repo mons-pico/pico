@@ -337,17 +337,19 @@ size_t pico_set(PICO * pico, size_t position, size_t length, uint8_t * data);
  * @param err       A stream to get error messages.  If NULL, suppressed.
  * @return          The last error code.
  */
-pico_errno encode_file(char * infile, char * outfile,
-                        keylen_t keylen, uint8_t * key,
-                        offset_t md_length, FILE * err);
+pico_errno pico_encode_file(char *infile, char *outfile,
+                            keylen_t keylen, uint8_t *key,
+                            offset_t md_length, FILE *err);
 
 /**
  * Decode an entire file.
  * @param infile    The input file name.
  * @param outfile   The output file name.
+ * @param testhash  Iff true, compute and check the hash during decode as a CRC.
  * @param err       A stream to get error messages.  If NULL, suppressed.
  * @return          The last error code.
  */
-pico_errno decode_file(char * infile, char * outfile, FILE * err);
+pico_errno pico_decode_file(char *infile, char *outfile, bool testhash,
+                            FILE *err);
 
 #endif //PICO_H

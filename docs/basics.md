@@ -5,8 +5,8 @@ dynamic) to your project.  You only need to `#include <pico.h>`.
 
 ## Whole-file operations
 
-If you just want to encode or decode a file, you can use `encode_file` and
-`decode_file`, respectively.  These take the file names, the key (if encoding),
+If you just want to encode or decode a file, you can use `pico_encode_file` and
+`pico_decode_file`, respectively.  These take the file names, the key (if encoding),
 and a stream to get error messages.
 
 ```c
