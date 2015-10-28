@@ -901,8 +901,8 @@ pico_decode_file(char *infile, char *outfile, bool testhash, FILE *err) {
     } while (count == CHUNK_SIZE);
 
     // Check the hash.
+    bool hash_match = true;
     if (testhash) {
-        bool hash_match = true;
         MD5_Final(hash, &md5data);
         for (size_t index = 0; index < HASH_LEN; ++index) {
             if (hash[index] != pico->hash[index]) {
