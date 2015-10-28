@@ -80,7 +80,7 @@ pico_free(void * ptr) {
  * @param out       Stream to get output.
  */
 static void
-hexify(void * thing, size_t length, FILE * out) {
+print_hexarray(void *thing, size_t length, FILE *out) {
     bool first = true;
     for (size_t index = 0; index < length; ++index) {
         if (first) {
@@ -89,6 +89,21 @@ hexify(void * thing, size_t length, FILE * out) {
             fprintf(out, ", ");
         }
         fprintf(out, "0x%02X", *((uint8_t *)(thing + index)));
+    } // Write all bytes.
+}
+
+/**
+ * Print a region of memory as a string of hex digits.
+ *
+ * @param thing     Pointer to memory.
+ * @param length    Number of bytes to print.
+ * @param out       Stream to get output.
+ */
+static void
+print_hexstring(void *thing, size_t length, FILE *out) {
+    bool first = true;
+    for (size_t index = 0; index < length; ++index) {
+        fprintf(out, "%02X", *((uint8_t *)(thing + index)));
     } // Write all bytes.
 }
 
@@ -102,7 +117,7 @@ hexify(void * thing, size_t length, FILE * out) {
  * @param out       Stream to get the output.
  */
 static void
-printint(void *thing, size_t length, bool hex, FILE *out) {
+print_int(void *thing, size_t length, bool hex, FILE *out) {
     if (hex) {
         if (length == 1) {
             fprintf(out, "0x%02" PRIX8, *((uint8_t *) (thing)));
@@ -115,13 +130,13 @@ printint(void *thing, size_t length, bool hex, FILE *out) {
         }
     } else {
         if (length == 1) {
-            fprintf(out, "0x%02" PRId8, *((uint8_t *) (thing)));
+            fprintf(out, "%" PRId8, *((uint8_t *) (thing)));
         } else if (length == 2) {
-            fprintf(out, "0x%04" PRId16, *((uint16_t *) (thing)));
+            fprintf(out, "%" PRId16, *((uint16_t *) (thing)));
         } else if (length == 4) {
-            fprintf(out, "0x%08" PRId32, *((uint32_t *) (thing)));
+            fprintf(out, "%" PRId32, *((uint32_t *) (thing)));
         } else if (length == 8) {
-            fprintf(out, "0x%16" PRId64, *((uint64_t *) (thing)));
+            fprintf(out, "%" PRId64, *((uint64_t *) (thing)));
         }
     }
 }
@@ -234,34 +249,34 @@ pico_dump_header(PICO * pico, FILE * out) {
     if (out == NULL) return;
 
     // Write the header information as JSON.
-    fprintf(out, "\"pico\" = {\n");
+    fprintf(out, "\"pico\" : {\n");
     fprintf(out, "    \"magic\" = [ ");
-    hexify(&magic, sizeof(magic_t), out);
-    fprintf(out, " ];\n");
+    print_hexarray(&magic, sizeof(magic_t), out);
+    fprintf(out, " ],\n");
 
-    fprintf(out, "    \"major\" = ");
-    printint(&pico->major, sizeof(major_t), false, out);
-    fprintf(out, ";\n");
+    fprintf(out, "    \"major\" : ");
+    print_int(&pico->major, sizeof(major_t), false, out);
+    fprintf(out, ",\n");
 
-    fprintf(out, "    \"minor\" = ");
-    printint(&pico->minor, sizeof(minor_t), false, out);
-    fprintf(out, ";\n");
+    fprintf(out, "    \"minor\" : ");
+    print_int(&pico->minor, sizeof(minor_t), false, out);
+    fprintf(out, ",\n");
 
-    fprintf(out, "    \"offset\" = ");
-    printint(&pico->offset, sizeof(offset_t), true, out);
-    fprintf(out, ";\n");
+    fprintf(out, "    \"offset\" : ");
+    print_int(&pico->offset, sizeof(offset_t), true, out);
+    fprintf(out, ",\n");
 
-    fprintf(out, "    \"hash\" = [ ");
-    hexify(pico->hash, HASH_LEN, out);
-    fprintf(out, " ];\n");
+    fprintf(out, "    \"md5\" : \"");
+    print_hexstring(pico->hash, HASH_LEN, out);
+    fprintf(out, "\",\n");
 
-    fprintf(out, "    \"key_length\" = ");
-    printint(&pico->key_length, sizeof(keylen_t), true, out);
-    fprintf(out, ";\n");
+    fprintf(out, "    \"key_length\" : ");
+    print_int(&pico->key_length, sizeof(keylen_t), false, out);
+    fprintf(out, ",\n");
 
-    fprintf(out, "    \"key\" = [ ");
-    hexify(pico->key, pico->key_length, out);
-    fprintf(out, " ];\n");
+    fprintf(out, "    \"key\" : [ ");
+    print_hexarray(pico->key, pico->key_length, out);
+    fprintf(out, " ]\n");
 
     fprintf(out, "}\n");
 }
