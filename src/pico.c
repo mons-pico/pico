@@ -22,19 +22,26 @@
 #include <stdbool.h>
 #include <string.h>
 #include <inttypes.h>
-#include <openssl/md5.h>
 #include <pico.h>
+#include "md5.h"
+
+
+/**
+ * The debugging level.  Right now there are two levels: 0 (suppress) and 1
+ * (emit debugging information).
+ */
+int debug = 0;
+
+/**
+ * Print an error message.  This works like fprintf.
+ * @param m_err     The stream.  If NULL, suppress the message.
+ * @param m_fmt     The format string.
+ */
+#define ERR(m_err, m_fmt, ...) \
+    if ((m_err) != NULL) fprintf((m_err), (m_fmt), ##__VA_ARGS__)
 
 /// Local magic number, so we can reference it by pointer.
 static magic_t magic = MAGIC;
-
-/**
- * Simple macro to check for an error using the usual non-zero return value.
- * Follow this with a block to execute on error.
- * @param m_operation       The operation to try.
- */
-#define TRY(m_operation) \
-    if (m_operation != 0)
 
 // Define memory handling.  Feel free to override this with jeMalloc,
 // nedmalloc, or something else.  Note that to do this you simply
@@ -136,6 +143,10 @@ uint8_t * crypt(uint8_t * data, size_t len, uint8_t * key, keylen_t keylen,
     return data;
 }
 
+char * pico_build() {
+    return "" __DATE__ ", " __TIME__;
+}
+
 //======================================================================
 // Pico header information.
 //======================================================================
@@ -181,22 +192,20 @@ pico_get_hash(PICO * pico) {
     // through the entire file and compute the hash.  Then store
     // it in the header and write the header back to the file.
 
-    // Seek the start.
-    if (fseek(pico->file, 0, SEEK_SET)) {
-        pico->errno = CANNOT_SEEK;
-        sprintf(pico->error_text, "Unable to seek to start of file.");
-        return NULL;
+    size_t position = 0;
+    size_t bytes = 0;
+    uint8_t * data = MALLOC(uint8_t, CHUNK_SIZE);
+    if (data == NULL) {
+        pico->errno = NO_MEMORY;
+        sprintf(pico->error_text, "Cannot get memory for buffer.");
     }
 
     // Initialize the hash computation.
     MD5_CTX md5data;
     MD5_Init(&md5data);
 
-    // Compute the hash over the decoded data.
-    size_t position = 0;
-    size_t bytes = 0;
-    uint8_t * data = MALLOC(uint8_t, CHUNK_SIZE);
-    while ((bytes = pico_get(pico, position, CHUNK_SIZE, data)) != 0) {
+    // Compute the hash.
+    while ((bytes = pico_get(pico, position, CHUNK_SIZE, data)) > 0) {
         MD5_Update(&md5data, data, bytes);
         position += bytes;
     } // Compute the hash over all bytes.
@@ -263,17 +272,16 @@ pico_dump_header(PICO * pico, FILE * out) {
 
 /**
  * Write the header to the start of the file.  This sets the error fields.
+ * This does not necessarily compute the hash; we want to leave that until
+ * the last moment, since it can be costly.
  *
  * @param pico          The Pico data structure.
  * @return              True iff there is an error.
  */
 static bool
 write_header(PICO * pico) {
-    // If necessary, update the hash.
-    if (pico_get_hash(pico) == NULL) return true;
-
     // Seek to the start of the file.
-    TRY (fseek(pico->file, 0, SEEK_SET)) {
+    if (fseek(pico->file, 0, SEEK_SET)) {
         pico->errno = CANNOT_SEEK;
         sprintf(pico->error_text, "Unable to seek to start of file.");
         return true;
@@ -298,7 +306,7 @@ write_header(PICO * pico) {
 
     // Write the header to the file.
     size_t size = fwrite(header, 1, KEY_POS + pico->key_length, pico->file);
-    TRY (size != KEY_POS + pico->key_length) {
+    if (size != KEY_POS + pico->key_length) {
         pico->errno = CANNOT_WRITE;
         sprintf(pico->error_text, "Unable to write header to file.");
         return true;
@@ -351,7 +359,7 @@ pico_new(FILE * file, uint16_t keylength, uint8_t * key, uint32_t md_length) {
     }
 
     // Write the header now.
-    TRY (write_header(pico)) {
+    if (write_header(pico)) {
         return pico;
     }
 
@@ -367,8 +375,7 @@ pico_new(FILE * file, uint16_t keylength, uint8_t * key, uint32_t md_length) {
  */
 static bool
 read_header(PICO * pico) {
-    TRY (fseek(pico->file, 0, SEEK_SET)) {
-        fprintf(stdout, "Read header.\n");
+    if (fseek(pico->file, 0, SEEK_SET)) {
         pico->errno = CANNOT_SEEK;
         sprintf(pico->error_text, "Unable to seek to start of file.");
         return true;
@@ -478,7 +485,10 @@ pico_errno
 pico_finish(PICO * pico) {
     if (pico == NULL) return false;
     if (pico->file != NULL) {
-        if (!pico->hash_valid) write_header(pico);
+        if (!pico->hash_valid) {
+            pico_get_hash(pico);
+            write_header(pico);
+        }
         if (fflush(pico->file)) {
             pico->errno = CANNOT_WRITE;
             sprintf(pico->error_text, "Unable to flush stream.");
@@ -603,11 +613,17 @@ pico_get(PICO * pico, size_t position, size_t length, uint8_t * buffer) {
     if (bytes == 0) return 0;
 
     // Perform a read of the encoded bytes.
-    if (fseek(pico->file, start, SEEK_SET) ||
-        fread(buffer, 1, bytes, pico->file) != bytes) {
-        pico->errno = CANNOT_READ;
-        sprintf(pico->error_text, "Cannot read data.");
+    size_t done = 0;
+    if (fseek(pico->file, start, SEEK_SET)) {
+        pico->errno = CANNOT_SEEK;
+        sprintf(pico->error_text, "Cannot seek to start of data.");
         return 0;
+    } else {
+        if ((done = fread(buffer, 1, bytes, pico->file)) != bytes) {
+            pico->errno = CANNOT_READ;
+            sprintf(pico->error_text, "Cannot read data.");
+            return 0;
+        }
     }
     pico->errno = OK;
 
@@ -618,6 +634,7 @@ pico_get(PICO * pico, size_t position, size_t length, uint8_t * buffer) {
 
 size_t
 pico_set(PICO * pico, size_t position, size_t length, uint8_t * data) {
+    static size_t next_position = 0;
     if (length == 0 || data == NULL || pico == NULL) return 0;
 
     // Copy and encrypt the data prior to writing.
@@ -629,9 +646,16 @@ pico_set(PICO * pico, size_t position, size_t length, uint8_t * data) {
     }
     memcpy(copy, data, length);
     crypt(copy, length, pico->key, pico->key_length, position);
-    // Move to the correct position in the file and write the data.
+    // Move to the correct position in the file and write the data.  We
+    // also invalidate the hash here.  Maybe.  If we write sequentially
+    // then there is no need; we can just update the hash.  Right now
+    // that is not implemented, but it should be relatively easy.  We
+    // make the hash stuff global to the module, and then update it if
+    // we have position = next_position.
+    pico->hash_valid = false;
     fseek(pico->file, position + pico->offset, SEEK_SET);
     size_t actual = fwrite(copy, 1, length, pico->file);
+    next_position = position + actual;
     if (actual != length) {
         pico->errno = CANNOT_WRITE;
         sprintf(pico->error_text, "Cannot write data.");
@@ -644,14 +668,6 @@ pico_set(PICO * pico, size_t position, size_t length, uint8_t * data) {
 //======================================================================
 // Pico whole file operations.
 //======================================================================
-
-/**
- * Print an error message.  This works like fprintf.
- * @param m_err     The stream.  If NULL, suppress the message.
- * @param m_fmt     The format string.
- */
-#define ERR(m_err, m_fmt, ...) \
-    if ((m_err) != NULL) fprintf((m_err), (m_fmt), ##__VA_ARGS__)
 
 pico_errno
 encode_file(char * infile, char * outfile,  keylen_t key_length, uint8_t * key,
@@ -680,7 +696,7 @@ encode_file(char * infile, char * outfile,  keylen_t key_length, uint8_t * key,
     }
 
     // Open the file to get output.
-    FILE * fout = fopen(outfile, "w");
+    FILE * fout = fopen(outfile, "w+");
     if (fout == NULL) {
         fclose(fin);
         ERR(err, "ERROR: Unable to open output file.\n");
@@ -747,7 +763,7 @@ decode_file(char * infile, char * outfile, bool header, FILE * err) {
     }
 
     // Open the file to get output.
-    FILE * fout = fopen(outfile, "w");
+    FILE * fout = fopen(outfile, "w+");
     if (fout == NULL) {
         fclose(fin);
         ERR(err, "ERROR: Unable to open output file.\n");

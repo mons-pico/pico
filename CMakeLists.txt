@@ -3,18 +3,10 @@
 cmake_minimum_required(VERSION 2.8)
 project(cpico)
 set(ADDITIONAL_LIBS "")
-
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
 
-# Need to link with the OpenSSL library.
-find_package(OpenSSL REQUIRED)
-include_directories(${OPENSSL_INCLUDE_DIR})
-list(APPEND ADDITIONAL_LIBS ${OPENSSL_LIBRARIES})
-find_library(CRYPTO_LIBRARY NAMES crypto)
-list(APPEND ADDITIONAL_LIBS ${CRYPTO_LIBRARY})
-
 include_directories(AFTER SYSTEM include)
-set(LIBRARY_FILES src/pico.c include/pico_errno.h include/pico_defs.h)
+set(LIBRARY_FILES src/pico.c include/pico_errno.h include/pico_defs.h src/md5.c src/md5.h)
 add_library(pico ${LIBRARY_FILES})
 add_executable(pico-bin src/main.c)
 target_link_libraries(pico-bin pico ${ADDITIONAL_LIBS})

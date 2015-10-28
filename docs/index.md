@@ -32,6 +32,9 @@ distributed under the [2-clause "simplified" BSD license](license.md).
   * The project is built using [CMake][cmake].
   * CPico relies on the [Pico encoding][mons-pico], which is Copyright (c) by
     UT-Battelle, LLC, but unrestricted.
+  * CPico includes [Alexander Peslyak MD5 implementation][md5] placed in the
+    public domain, though this can be overridden to use the OpenSSL libraries.
+    See `src/md5.h` for how one might do this.
 
 
 [semver]: http://semver.org
@@ -43,3 +46,4 @@ distributed under the [2-clause "simplified" BSD license](license.md).
 [mons-pico]: https://github.com/mons-pico/wiki/wiki/Pico-Encoding
 [markdown]: https://daringfireball.net/projects/markdown/
 [api]:    api/index.html
+[md5]:    http://openwall.info/wiki/people/solar/software/public-domain-source-code/md5

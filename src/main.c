@@ -19,6 +19,7 @@
 #include <getopt.h>
 #include <string.h>
 #include <pico.h>
+#include <pico_defs.h>
 
 /**
  * Print usage information for the command line executable.
@@ -50,6 +51,7 @@ print_usage(char * name) {
     fprintf(stdout, "base name.\n");
     fprintf(stdout, "\n");
     fprintf(stdout, "Pico encoding version: %d.%d.\n", VERSION_MAJOR, VERSION_MINOR);
+    fprintf(stdout, "Using CPico library built: %s\n", pico_build());
 }
 
 /**
@@ -66,7 +68,6 @@ main(int argc, char * argv[]) {
     bool encode = true;
     bool header = false;
     bool quiet = false;
-    bool debug = false;
     char * myname = argv[0];
     char * extension = NULL;
     int argument = 0;
@@ -116,7 +117,7 @@ main(int argc, char * argv[]) {
                 if (strcmp("extension", longopts[argument].name) == 0) {
                     extension = optarg;
                 } else if (strcmp("debug", longopts[argument].name) == 0) {
-                    debug = true;
+                    debug = 1;
                     fprintf(stdout, "Debugging enabled.\n");
                 }
                 break;
@@ -135,13 +136,13 @@ main(int argc, char * argv[]) {
     }
 
     if (debug) {
-        fprintf(stdout, "Encoding: %d\n", encode);
-        fprintf(stdout, "Suffix: %s\n", suffix);
-        fprintf(stdout, "Header: %d\n", header);
-        fprintf(stdout, "Extension: %s\n", extension);
-        fprintf(stdout, "Arguments:\n");
+        DEBUG("Encoding: %d", encode);
+        DEBUG("Suffix: %s", suffix);
+        DEBUG("Header: %d", header);
+        DEBUG("Extension: %s", extension);
+        DEBUG("Arguments:");
         for (int index = optind; index < argc; ++index) {
-            fprintf(stdout, "  -> %s\n", argv[index]);
+            DEBUG("  -> %s", argv[index]);
         } // Print arguments.
     }
 
@@ -152,6 +153,33 @@ main(int argc, char * argv[]) {
     const size_t addlen = strlen(extension) + strlen(suffix);
     for (int index = optind; index < argc; ++index) {
         if (strlen(argv[index]) == 0) continue;
+
+        // If the user wants only the header, then just do that.  The remainder
+        // of this loop body assumes that you are either encoding or decoding.
+        if (header) {
+            // Open the input file, which should be a Pico-encoded file.
+            FILE * fin = fopen(argv[index], "r");
+            if (fin == NULL) {
+                fprintf(stderr, "ERROR: Cannot locate input file: %s.",
+                        argv[index]);
+                continue;
+            }
+            PICO * pico = pico_open(fin);
+            if (pico == NULL) {
+                fprintf(stderr, "ERROR: File is not a Pico file: %s.",
+                        argv[index]);
+                continue;
+            }
+            if (! pico_is_error(pico)) {
+                pico_dump_header(pico, stdout);
+            }
+            if (pico_is_error(pico)) {
+                fprintf(stderr, "ERROR: %s\n", pico->error_text);
+            }
+            pico_finish(pico);
+            fclose(fin);
+            continue;
+        }
 
         // Compute the appropriate output filename.
         const size_t maxlen = addlen + strlen(argv[index]) + 1;

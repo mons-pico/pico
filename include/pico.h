@@ -27,6 +27,35 @@
 
 
 //======================================================================
+// Debugging.
+//======================================================================
+
+/**
+ * This is the global debugging flag.  Right now there are two settings:
+ * 0 suppresses, and 1 enables.  The default is zero.
+ */
+extern int debug;
+
+//#define TOKENPASTE(x, y) x ## y
+//#define TOKENPASTE2(x, y) TOKENPASTE(x, y)
+
+/**
+ * Macro to output a debug message.  This works like `printf`.
+ * @param m_fmt         The format string which must be a string literal.
+ */
+#define DEBUG(m_fmt, ...) \
+    fprintf(stderr, "DEBUG (%s:%d): " m_fmt "\n", \
+        __FILE__, __LINE__, ## __VA_ARGS__);
+
+/**
+ * Return the build date and time.  The returned string is an internal
+ * static string, and should not be deallocated.
+ *
+ * @return      A string containing the date and time of the build.
+ */
+char * pico_build();
+
+//======================================================================
 // Memory handling.
 //======================================================================
 
