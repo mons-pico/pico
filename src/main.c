@@ -37,7 +37,7 @@ print_usage(char * name) {
     fprintf(stdout, "  -e / --encode ............ Encode files (default).\n");
     fprintf(stdout, "  --extension=[ext] ........ Set output file extension.\n");
     fprintf(stdout, "  -h / --help .............. Print this help information.\n");
-    fprintf(stdout, "  -H / --header ............ Dump header information.\n");
+    fprintf(stdout, "  -H / --header=[kind] ..... Dump header information.\n");
     fprintf(stdout, "  -s / --suffix=[suffix] ... Suffix to add to output files.\n");
     fprintf(stdout, "\n");
     //               0123456789012345678901234567890123456789012345678901234567890123456789
@@ -49,6 +49,8 @@ print_usage(char * name) {
     fprintf(stdout, "The extension used can be overridden by --extension, which should include the\n");
     fprintf(stdout, "dot.  Any provided suffix (by default there is none) is added to the file's\n");
     fprintf(stdout, "base name.\n");
+    fprintf(stdout, "\n");
+    fprintf(stdout, "The header kinds can be json, yaml, python, or xml.");
     fprintf(stdout, "\n");
     fprintf(stdout, "Pico encoding version: %d.%d.\n", VERSION_MAJOR, VERSION_MINOR);
     fprintf(stdout, "Using CPico library built: %s\n", pico_build());
@@ -71,16 +73,17 @@ main(int argc, char * argv[]) {
     char * myname = argv[0];
     char * extension = NULL;
     int argument = 0;
+    header_format_t kind = PYTHON_DICT;
 
     // Process the arguments.
-    static const char * optstring = "dehHs:q";
+    static const char * optstring = "dehH:s:q";
     static const struct option longopts[] = {
             { "debug", no_argument, NULL, 0 },
             { "decode", no_argument, NULL, 'd' },
             { "encode", no_argument, NULL, 'e' },
             { "extension", required_argument, NULL, 0 },
             { "help", no_argument, NULL, 'h' },
-            { "header", no_argument, NULL, 'H' },
+            { "header", required_argument, NULL, 'H' },
             { "suffix", required_argument, NULL, 's' },
             { "quiet", no_argument, NULL, 'q' },
             { NULL, 0, NULL, 0 }
@@ -103,6 +106,20 @@ main(int argc, char * argv[]) {
 
             case 'H':
                 header = true;
+                if (strcmp(optarg, "json") == 0) {
+                    kind = JSON;
+                } else if (strcmp(optarg, "yaml") == 0) {
+                    kind = YAML;
+                } else if (strcmp(optarg, "python") == 0) {
+                    kind = PYTHON_DICT;
+                } else if (strcmp(optarg, "xml") == 0) {
+                    kind = XML;
+                } else {
+                    fprintf(stderr, "ERROR: Unknown header format %s.\n", optarg);
+                    fprintf(stderr, "Legal values are:\n");
+                    fprintf(stderr, "  python json yaml xml\n");
+                    return 1;
+                }
                 break;
 
             case 's':
@@ -171,7 +188,7 @@ main(int argc, char * argv[]) {
                 continue;
             }
             if (! pico_is_error(pico)) {
-                pico_dump_header(pico, stdout);
+                pico_dump_header(pico, kind, stdout);
             }
             if (pico_is_error(pico)) {
                 fprintf(stderr, "ERROR: %s\n", pico->error_text);

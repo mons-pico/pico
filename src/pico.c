@@ -77,10 +77,11 @@ pico_free(void * ptr) {
  *
  * @param thing     Pointer to memory.
  * @param length    Number of bytes to print.
+ * @param hex       If true, print hex.  Otherwise, print decimal.
  * @param out       Stream to get output.
  */
 static void
-print_hexarray(void *thing, size_t length, FILE *out) {
+print_array(void *thing, size_t length, bool hex, FILE *out) {
     bool first = true;
     for (size_t index = 0; index < length; ++index) {
         if (first) {
@@ -88,7 +89,11 @@ print_hexarray(void *thing, size_t length, FILE *out) {
         } else {
             fprintf(out, ", ");
         }
-        fprintf(out, "0x%02X", *((uint8_t *)(thing + index)));
+        if (hex) {
+            fprintf(out, "0x%02X", *((uint8_t *) (thing + index)));
+        } else {
+            fprintf(out, "%d", *((uint8_t *) (thing + index)));
+        }
     } // Write all bytes.
 }
 
@@ -244,41 +249,114 @@ pico_get_key(PICO * pico) {
 }
 
 void
-pico_dump_header(PICO * pico, FILE * out) {
+pico_dump_header(PICO * pico, header_format_t format, FILE * out) {
     if (pico == NULL) return;
     if (out == NULL) return;
 
-    // Write the header information as JSON.
-    fprintf(out, "\"pico\" : {\n");
-    fprintf(out, "    \"magic\" = [ ");
-    print_hexarray(&magic, sizeof(magic_t), out);
-    fprintf(out, " ],\n");
+    // Python dictionary and JSON are almost exactly the same.  Almost.
+    // So is YAML.
+    switch (format) {
+        case PYTHON_DICT:
+        case JSON:
+            // Write the header information as either JSON or a Python dict.
+            fprintf(out, "{\n");
+            fprintf(out, "    \"magic\" : [ ");
+            print_array(&magic, sizeof(magic_t), format == PYTHON_DICT, out);
+            fprintf(out, " ],\n");
 
-    fprintf(out, "    \"major\" : ");
-    print_int(&pico->major, sizeof(major_t), false, out);
-    fprintf(out, ",\n");
+            fprintf(out, "    \"major\" : ");
+            print_int(&pico->major, sizeof(major_t), false, out);
+            fprintf(out, ",\n");
 
-    fprintf(out, "    \"minor\" : ");
-    print_int(&pico->minor, sizeof(minor_t), false, out);
-    fprintf(out, ",\n");
+            fprintf(out, "    \"minor\" : ");
+            print_int(&pico->minor, sizeof(minor_t), false, out);
+            fprintf(out, ",\n");
 
-    fprintf(out, "    \"offset\" : ");
-    print_int(&pico->offset, sizeof(offset_t), true, out);
-    fprintf(out, ",\n");
+            fprintf(out, "    \"offset\" : ");
+            print_int(&pico->offset, sizeof(offset_t), format == PYTHON_DICT, out);
+            fprintf(out, ",\n");
 
-    fprintf(out, "    \"md5\" : \"");
-    print_hexstring(pico->hash, HASH_LEN, out);
-    fprintf(out, "\",\n");
+            fprintf(out, "    \"md5\" : \"");
+            print_hexstring(pico->hash, HASH_LEN, out);
+            fprintf(out, "\",\n");
 
-    fprintf(out, "    \"key_length\" : ");
-    print_int(&pico->key_length, sizeof(keylen_t), false, out);
-    fprintf(out, ",\n");
+            fprintf(out, "    \"key_length\" : ");
+            print_int(&pico->key_length, sizeof(keylen_t), false, out);
+            fprintf(out, ",\n");
 
-    fprintf(out, "    \"key\" : [ ");
-    print_hexarray(pico->key, pico->key_length, out);
-    fprintf(out, " ]\n");
+            fprintf(out, "    \"key\" : [ ");
+            print_array(pico->key, pico->key_length, format == PYTHON_DICT, out);
+            fprintf(out, " ]\n");
 
-    fprintf(out, "}\n");
+            fprintf(out, "}\n");
+            break;
+
+        case YAML:
+            // Write header as YAML.
+            fprintf(out, "    magic : [ ");
+            print_array(&magic, sizeof(magic_t), true, out);
+            fprintf(out, " ]\n");
+
+            fprintf(out, "    major : ");
+            print_int(&pico->major, sizeof(major_t), false, out);
+            fprintf(out, "\n");
+
+            fprintf(out, "    minor : ");
+            print_int(&pico->minor, sizeof(minor_t), false, out);
+            fprintf(out, "\n");
+
+            fprintf(out, "    offset : ");
+            print_int(&pico->offset, sizeof(offset_t), true, out);
+            fprintf(out, "\n");
+
+            fprintf(out, "    md5 : ");
+            print_hexstring(pico->hash, HASH_LEN, out);
+            fprintf(out, "\n");
+
+            fprintf(out, "    key_length : ");
+            print_int(&pico->key_length, sizeof(keylen_t), false, out);
+            fprintf(out, "\n");
+
+            fprintf(out, "    key : [ ");
+            print_array(pico->key, pico->key_length, true, out);
+            fprintf(out, " ]\n");
+            break;
+
+        case XML:
+            // Write header as XML.
+            fprintf(out, "<pico magic='");
+            print_hexstring(&magic, sizeof(magic_t), out);
+            fprintf(out, "'\n");
+
+            fprintf(out, "    major='");
+            print_int(&pico->major, sizeof(major_t), false, out);
+            fprintf(out, "'\n");
+
+            fprintf(out, "    minor='");
+            print_int(&pico->minor, sizeof(minor_t), false, out);
+            fprintf(out, "'\n");
+
+            fprintf(out, "    offset='");
+            print_int(&pico->offset, sizeof(offset_t), false, out);
+            fprintf(out, "'\n");
+
+            fprintf(out, "    md5='");
+            print_hexstring(pico->hash, HASH_LEN, out);
+            fprintf(out, "'\n");
+
+            fprintf(out, "    key_length='");
+            print_int(&pico->key_length, sizeof(keylen_t), false, out);
+            fprintf(out, "'\n");
+
+            fprintf(out, "    key='");
+            print_hexstring(pico->key, pico->key_length, out);
+            fprintf(out, "' />\n");
+            break;
+
+        default:
+            // Do nothing.
+            break;
+    }
 }
 
 //======================================================================
@@ -793,9 +871,6 @@ decode_file(char * infile, char * outfile, bool header, FILE * err) {
         ERR(err, "ERROR: %s\n", pico->error_text);
         return pico->errno;
     }
-
-    // If the user wants to see the header, display it now.
-    if (header) pico_dump_header(pico, stdout);
 
     // Read and copy chunks until we fail to read.
     size_t count = 0;

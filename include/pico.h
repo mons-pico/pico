@@ -71,6 +71,16 @@ void pico_free(void * ptr);
 //======================================================================
 
 /**
+ * Different ways to represent the header when using `pico_dump_header`.
+ */
+typedef enum {
+    PYTHON_DICT,    ///< Python dictionary literal.
+    JSON,           ///< Strict JSON.
+    YAML,           ///< Strict YAML.
+    XML,            ///< Verbose XML.
+} header_format_t;
+
+/**
  * Obtain the Pico magic number.  The return value is always 0x91C0.
  *
  * @return          The Pico magic number.
@@ -152,9 +162,10 @@ uint8_t * pico_get_key(PICO * pico);
  * text.
  *
  * @param pico      The Pico data structure.
+ * @param format    The format to use.
  * @param out       An output stream.
  */
-void pico_dump_header(PICO * pico, FILE * out);
+void pico_dump_header(PICO * pico, header_format_t format, FILE * out);
 
 //======================================================================
 // Pico file handling.
