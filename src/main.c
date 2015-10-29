@@ -176,13 +176,13 @@ main(int argc, char * argv[]) {
             // Open the input file, which should be a Pico-encoded file.
             FILE * fin = fopen(argv[index], "r");
             if (fin == NULL) {
-                fprintf(stderr, "ERROR: Cannot locate input file: %s.",
+                fprintf(stderr, "ERROR: Cannot locate input file: %s.\n",
                         argv[index]);
                 continue;
             }
-            PICO * pico = pico_open(fin);
+            PICO * pico = pico_open(fin, NULL);
             if (pico == NULL) {
-                fprintf(stderr, "ERROR: File is not a Pico file: %s.",
+                fprintf(stderr, "ERROR: File is not a Pico file: %s.\n",
                         argv[index]);
                 continue;
             }

@@ -106,6 +106,8 @@ uint16_t pico_minor();
 /**
  * Obtain and return the major version from an open Pico file.
  *
+ * If the provided structure is NULL, then 0 is returned.
+ *
  * @param pico      The Pico data structure.
  * @return          The stored major version.
  * @see             pico_major
@@ -114,6 +116,8 @@ uint16_t pico_get_major(PICO * pico);
 
 /**
  * Obtain and return the minor version from an open Pico file.
+ *
+ * If the provided structure is NULL, then zero is returned.
  *
  * @param pico      The Pico data structure.
  * @return          The stored minor version.
@@ -125,6 +129,8 @@ uint16_t pico_get_minor(PICO * pico);
  * Get the offset value.  This is the zero-based offset in the file of the
  * first byte of encoded data.
  *
+ * If the provided structure is NULL, then zero is returned.
+ *
  * @param pico      The Pico data structure.
  * @return          The offset.
  */
@@ -134,7 +140,9 @@ uint32_t pico_get_offset(PICO * pico);
  * Get the hash.  If the file has not been modified, then this is valid.
  * If the file has been modified, then this will force the hash to be
  * both re-computed and written to the file header, which can be quite
- * costly.  Caution: If the structure is NULL, this will return NULL.
+ * costly.
+ *
+ * If the provided structure is NULL, then NULL is returned.
  *
  * @param pico      The Pico data structure.
  * @return          The 16 byte hash value.  Do not deallocate this.
@@ -144,13 +152,16 @@ uint8_t * pico_get_hash(PICO * pico);
 /**
  * Get the number of bytes in the key.  Keys cannot be zero length.
  *
+ * If the provided structure is NULL, then zero is returned.
+ *
  * @return          The length, in bytes, of the key.
  */
 uint16_t pico_get_key_length(PICO * pico);
 
 /**
- * Get the key.  Caution: If the structure is NULL, this will return
- * NULL.
+ * Get the key.
+ *
+ * If the provided structure is NULL, then NULL is returned.
  *
  * @param pico      The Pico data structure.
  * @return          The bytes of the key.  Do not deallocate this.
@@ -160,6 +171,8 @@ uint8_t * pico_get_key(PICO * pico);
 /**
  * Dump the content of the header to the specified output stream as
  * text.
+ *
+ * If either the structure or file is NULL, then nothing is done.
  *
  * @param pico      The Pico data structure.
  * @param format    The format to use.
@@ -175,30 +188,41 @@ void pico_dump_header(PICO * pico, header_format_t format, FILE * out);
  * Create a Pico-encoded file, opened empty.  If the file exists prior to this
  * call, it will be overwritten.
  *
+ * If the file is NULL, the key length is less than one, or the key is NULL,
+ * then NULL is returned.  If an error is detected and the structure cannot
+ * be constructed, then NULL is returned.
+ *
  * @param file      The file to create.
  * @param keylength The number of bytes in the key.
  * @param key       The key.  This value is copied; caller should deallocate.
  * @param md_length Reserve the specified number of bytes for metadata.
+ * @param perrno    If an error occurs and this is not NULL, it holds the
+ *                  error condition code.
  * @return          The Pico data structure.  Test for `NULL`.
  */
 PICO * pico_new(FILE * file, uint16_t keylength, uint8_t * key,
-                 uint32_t md_length);
+                 uint32_t md_length, pico_errno * perrno);
 
 /**
- * Open a Pico-encoded file.  If the file does not exist the returned value
- * will indicate an error.
+ * Open a Pico-encoded file.
+ *
+ * If the file is NULL or an error occurs in processing (corrupt header,
+ * not a Pico file, no memory) then NULL is returned.
  *
  * @param file      The file to open or create.
+ * @param perrno    If an error occurs and this is not NULL, it holds the
+ *                  error condition code.
  * @return          The Pico data structure.  Test for `NULL`.
  */
-PICO * pico_open(FILE * file);
+PICO * pico_open(FILE * file, pico_errno * perrno);
 
 /**
  * Flush any data to the file and deallocate the Pico data structure.
  * Do not use `pico_free` or you will get a memory leak.  This does not
  * close the underlying stream.
  *
- * Do not use the pico data structure after this; it is invalid.
+ * Do not use the pico data structure after this; it is invalid.  If the
+ * provided structure is NULL, nothing is done and OK is returned.
  *
  * @param pico      The Pico data structure.
  * @return          The last error code generated.
@@ -211,7 +235,9 @@ pico_errno pico_finish(PICO * pico);
 
 /**
  * Returns true if the given Pico file is in an error condition, and false
- * otherwise.  Always returns true if the Pico data structure is `NULL`.
+ * otherwise.
+ *
+ * Always returns true if the Pico data structure is `NULL`.
  *
  * @param pico      The Pico data structure.
  * @return          True iff an error was detected, or the structure is
@@ -222,6 +248,8 @@ bool pico_is_error(PICO * pico);
 /**
  * Get the current error state from the Pico data structure.
  *
+ * Always returns ISNULL if the structure is NULL.
+ *
  * @param pico      The Pico data structure.
  * @return          The current error value.
  */
@@ -230,6 +258,8 @@ pico_errno pico_get_errno(PICO * pico);
 /**
  * Get a human-readable error string from the Pico data structure.
  *
+ * Returns "Null pointer." iff the data structure is NULL.
+ *
  * @param pico      The Pico data structure.
  * @return          The human-readable string.  Do not deallocate this!
  */
@@ -237,6 +267,8 @@ char * pico_print_error(PICO * pico);
 
 /**
  * Clear any error condition in the given Pico data structure.
+ *
+ * Ignored if the structure is NULL.
  *
  * @param pico      The Pico data structure.
  */
@@ -249,44 +281,47 @@ void pico_clear_error(PICO * pico);
 /**
  * Get the length of the metadata, in bytes.  This may be zero.
  *
+ * If the structure is NULL this returns zero.
+ *
  * @param pico      The Pico data structure.
  * @return          The length of the metadata section, in bytes.
  */
 size_t pico_get_md_length(PICO * pico);
 
 /**
- * Extract some portion of the metadata from the header.  Note that the
- * returned value is always allocated to the provided length, and will be
- * `NULL` exactly when the length is zero or allocation fails.  If the
- * length exceeds the metadata available at the given position, then the
- * returned buffer is padded with zeros.  This is not considered an error.
+ * Extract some portion of the metadata from the header.  If there is not
+ * enough metadata at the given position to return, or if the position is past
+ * the end of the metadata, then the buffer is padded with nuls.  This is not
+ * considered an error.
  *
- * The caller is responsible for deallocating the return value using
- * `pico_free`.
+ * If either the structure or data is NULL then nothing is done and zero is
+ * returned.
  *
  * @param pico      The Pico data structure.
  * @param position  The zero-based offset into the metadata.
  * @param length    The number of bytes to extract.
- * @return          The extracted metadata.
+ * @param data      A buffer to get the extracted metadata.
+ * @return          The number of bytes of metadata actually extracted.
  */
-uint8_t * pico_get_metadata(PICO * pico, uint32_t position, uint32_t length);
+uint32_t pico_get_metadata(PICO * pico, uint32_t position, uint32_t length,
+                           uint8_t * data);
 
 /**
  * Write metadata to the header.  If there is not enough room at the given
  * position then the value is silently truncated.  Truncation is not
  * considered an error.
  *
- * If the length is zero, nothing is done and false is returned.  Otherwise
- * if the metadata is NULL, then true is returned (because of "truncation").
+ * If either the structure or data is NULL then nothing is done and zero is
+ * returned.
  *
  * @param pico      The Pico data structure.
  * @param position  The zero-based offset at which the first byte is written.
  * @param length    The number of bytes to write.  Zero is allowed.
  * @param md        The metadata to write.
- * @return          True iff data was truncated, was NULL, or `pico` was NULL.
+ * @return          The number of bytes of metadata actually set.
  */
-bool pico_set_metadata(PICO * pico, uint32_t position, uint32_t length,
-                        uint8_t * md);
+uint32_t pico_set_metadata(PICO * pico, uint32_t position, uint32_t length,
+                           uint8_t * md);
 
 //======================================================================
 // Pico data access.
@@ -294,13 +329,11 @@ bool pico_set_metadata(PICO * pico, uint32_t position, uint32_t length,
 
 /**
  * Read and decode a block of data.  If there is not sufficient data at the
- * given position then the returned value is padded with nuls.
+ * given position then the returned value is padded with nuls.  This is not
+ * considered an error.
  *
- * If the length is zero or allocation fails, then 0 is returned.  If the
- * buffer is NULL then 0 is returned.
- *
- * The caller is responsible for deallocating the return value using
- * `pico_free`.
+ * If either the structure or data is NULL then nothing is done and zero is
+ * returned.
  *
  * @param pico      The Pico data structure.
  * @param position  The zero-based offset into the data.
@@ -314,6 +347,9 @@ size_t pico_get(PICO * pico, size_t position, size_t length, uint8_t * data);
  * Encode and write the given block of data.  The return value is the actual
  * number of bytes successfully written.  This will always be the same as
  * length unless an error occurs.
+ *
+ * If either the structure or data is NULL then nothing is done and zero is
+ * returned.
  *
  * @param pico      The Pico data structure.
  * @param position  The zero-based offset into the data.
@@ -329,6 +365,7 @@ size_t pico_set(PICO * pico, size_t position, size_t length, uint8_t * data);
 
 /**
  * Encode an entire file.
+ *
  * @param infile    The input file name.
  * @param outfile   The output file name.
  * @param keylen    Number of bytes in the key.
@@ -343,6 +380,7 @@ pico_errno pico_encode_file(char *infile, char *outfile,
 
 /**
  * Decode an entire file.
+ *
  * @param infile    The input file name.
  * @param outfile   The output file name.
  * @param testhash  Iff true, compute and check the hash during decode as a CRC.

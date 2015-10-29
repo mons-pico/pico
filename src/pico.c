@@ -23,6 +23,7 @@
 #include <string.h>
 #include <inttypes.h>
 #include <pico.h>
+#include <pico_defs.h>
 #include "md5.h"
 
 
@@ -31,14 +32,6 @@
  * (emit debugging information).
  */
 int pico_debug = 0;
-
-/**
- * Print an error message.  This works like fprintf.
- * @param m_err     The stream.  If NULL, suppress the message.
- * @param m_fmt     The format string.
- */
-#define ERR(m_err, m_fmt, ...) \
-    if ((m_err) != NULL) fprintf((m_err), (m_fmt), ##__VA_ARGS__)
 
 /// Local magic number, so we can reference it by pointer.
 static magic_t magic = MAGIC;
@@ -411,12 +404,38 @@ write_header(PICO * pico) {
 }
 
 PICO *
-pico_new(FILE * file, uint16_t keylength, uint8_t * key, uint32_t md_length) {
-    // Allocate immediately.
-    PICO * pico = MALLOC(PICO, 1);
-    if (pico == NULL) return NULL;
+pico_new(FILE * file, uint16_t keylength, uint8_t * key, uint32_t md_length,
+         pico_errno * perrno) {
+    if (file == NULL) {
+        if (perrno != NULL) *perrno = USAGE;
+        DEBUG("File is NULL.");
+        return NULL;
+    }
+    if (keylength < 1 || key == NULL) {
+        if (perrno != NULL) *perrno = KEY_ERROR;
+        DEBUG("Key is NULL or zero length.");
+        return NULL;
+    }
 
-    // Initialize parts of the header.
+    // Save the key.
+    uint8_t * keycopy = MALLOC(uint8_t, keylength);
+    if (keycopy == NULL) {
+        if (perrno != NULL) *perrno = NO_MEMORY;
+        DEBUG("Cannot get memory for key.");
+        return NULL;
+    }
+    memcpy(keycopy, key, keylength);
+
+    // Allocate the structure.
+    PICO * pico = MALLOC(PICO, 1);
+    if (pico == NULL) {
+        if (perrno != NULL) *perrno = NO_MEMORY;
+        DEBUG("Cannot get memory for PICO structure.");
+        pico_free(keycopy);
+        return NULL;
+    }
+
+    // Initialize the header.
     pico->file = file;
     pico->major = VERSION_MAJOR;
     pico->minor = VERSION_MINOR;
@@ -425,31 +444,9 @@ pico_new(FILE * file, uint16_t keylength, uint8_t * key, uint32_t md_length) {
     pico->errno = OK;
     pico->md_length = 0;
     pico->data_length = 0;
-
-    // Save the key.
     pico->key_length = keylength;
-    if (keylength > 0) {
-        if (key == NULL) {
-            pico->errno = KEY_ERROR;
-            sprintf(pico->error_text, "Key data is null but length is not zero.");
-            return pico;
-        }
-        pico->key = MALLOC(uint8_t, keylength);
-        if (pico->key == NULL) {
-            pico->errno = NO_MEMORY;
-            sprintf(pico->error_text, "Cannot get memory for key.");
-            return pico;
-        }
-        memcpy(pico->key, key, keylength);
-    } else {
-        // Always allocate for key so that it is not NULL.
-        pico->key = MALLOC(uint8_t, 1);
-        if (pico->key == NULL) {
-            pico->errno = NO_MEMORY;
-            sprintf(pico->error_text, "Cannot get memory for key.");
-            return pico;
-        }
-    }
+    pico->key = keycopy;
+    pico->valid = false;    // Not yet valid!
 
     // Write the header now.
     if (write_header(pico)) {
@@ -457,6 +454,8 @@ pico_new(FILE * file, uint16_t keylength, uint8_t * key, uint32_t md_length) {
     }
 
     // Done.
+    if (perrno != NULL) *perrno = OK;
+    pico->valid = true;     // Now the header is valid.
     return pico;
 }
 
@@ -468,6 +467,7 @@ pico_new(FILE * file, uint16_t keylength, uint8_t * key, uint32_t md_length) {
  */
 static bool
 read_header(PICO * pico) {
+    pico->valid = false;    // Not yet valid.
     if (fseek(pico->file, 0, SEEK_SET)) {
         pico->errno = CANNOT_SEEK;
         sprintf(pico->error_text, "Unable to seek to start of file.");
@@ -556,45 +556,64 @@ read_header(PICO * pico) {
     // metadata length.
     pico->md_length = pico->offset - KEY_POS - pico->key_length;
     pico->errno = OK;
+    pico->valid = true;     // Header is now valid.
     return false;
 }
 
 PICO *
-pico_open(FILE * file) {
-    // Allocate immediately.
+pico_open(FILE * file, pico_errno * perrno) {
+    if (file == NULL) {
+        if (perrno != NULL) *perrno = USAGE;
+        DEBUG("File is NULL.");
+        return NULL;
+    }
+
+    // Allocate the structure.
     PICO * pico = MALLOC(PICO, 1);
-    if (pico == NULL) return NULL;
+    if (pico == NULL) {
+        if (perrno != NULL) *perrno = NO_MEMORY;
+        DEBUG("Unable to get memory for PICO structure.");
+        return NULL;
+    }
 
     // Store what we know.
     pico->file = file;
 
-    // Read the header.  Errors are communicated in the Pico structure
-    // so we do not need to check anything here.
-    read_header(pico);
+    // Read the header.  If this fails, deallocate everything.
+    if (read_header(pico)) {
+        if (perrno != NULL) *perrno = pico->errno;
+        DEBUG("%s", pico->error_text);
+        pico_finish(pico);
+        return NULL;
+    }
+    if (perrno != NULL) *perrno = OK;
     return pico;
 }
 
 pico_errno
 pico_finish(PICO * pico) {
-    if (pico == NULL) return false;
-    if (pico->file != NULL) {
-        if (!pico->hash_valid) {
+    if (pico == NULL) return OK;
+    if (pico->valid && pico->file != NULL) {
+        if (! pico->hash_valid) {
             pico_get_hash(pico);
             write_header(pico);
         }
         if (fflush(pico->file)) {
-            pico->errno = CANNOT_WRITE;
-            sprintf(pico->error_text, "Unable to flush stream.");
-        } else {
-            pico->file = NULL;
-            pico->errno = OK;
+            DEBUG("Unable to flush stream.");
+            return CANNOT_WRITE;
         }
     }
+    pico->valid = false;    // Header is now invalid.
+    pico->file = NULL;
     pico->key_length = 0;
     pico_free(pico->key);
     pico->key = NULL;
+    if (pico_is_error(pico)) {
+        DEBUG("%s", pico->error_text);
+    }
+    pico_errno errno = pico->errno;
     pico_free(pico);
-    return pico->errno;
+    return errno;
 }
 
 //======================================================================
@@ -608,17 +627,17 @@ pico_is_error(PICO * pico) {
 
 pico_errno
 pico_get_errno(PICO * pico) {
-    return pico->errno;
+    return pico == NULL ? ISNULL : pico->errno;
 }
 
 char *
 pico_print_error(PICO * pico) {
-    return pico->error_text;
+    return pico == NULL ? "Null pointer." : pico->error_text;
 }
 
 void
 pico_clear_error(PICO * pico) {
-    pico->errno = OK;
+    if (pico != NULL) pico->errno = OK;
 }
 
 //======================================================================
@@ -630,61 +649,50 @@ pico_get_md_length(PICO * pico) {
     if (pico != NULL) return pico->md_length; else return 0;
 }
 
-uint8_t *
-pico_get_metadata(PICO * pico, offset_t position, offset_t length) {
-    if (length == 0) return NULL;
-    // Allocate the buffer.
-    uint8_t * buffer = MALLOC(uint8_t, length);
-    if (buffer == NULL) {
-        pico->errno = NO_MEMORY;
-        sprintf(pico->error_text, "Unable to allocate buffer.");
-        return NULL;
+uint32_t
+pico_get_metadata(PICO * pico, offset_t position, offset_t length,
+                  uint8_t * md) {
+    if (length == 0 || pico == NULL || md == NULL) return 0;
+    // Compute the start of the metadata to read.
+    offset_t start = position + KEY_POS + pico->key_length;
+    // Compute the number of bytes we can read.
+    offset_t bytes = pico->offset - start;
+    if (length < bytes) bytes = length;
+    // Perform the read.
+    if (fseek(pico->file, start, SEEK_SET) ||
+            fread(md, 1, bytes, pico->file) != bytes) {
+        pico->errno = CANNOT_READ;
+        sprintf(pico->error_text, "Cannot read metadata.");
+        DEBUG("Cannot read metadata.");
+        return 0;
     }
-    if (pico != NULL) {
-        // Compute the start of the metadata to read.
-        offset_t start = position + KEY_POS + pico->key_length;
-        // Compute the number of bytes we can read.
-        offset_t bytes = pico->offset - start;
-        if (length < bytes) bytes = length;
-        // Perform the read.
-        if (fseek(pico->file, start, SEEK_SET) ||
-                fread(buffer, 1, bytes, pico->file)) {
-            pico->errno = CANNOT_READ;
-            sprintf(pico->error_text, "Cannot read metadata.");
-            return buffer;
-        }
-        pico->errno = OK;
+    if (length != bytes) {
+        // Pad the remainder.
+        memset(md + bytes + start, 0, (length - bytes));
     }
-    return buffer;
+    pico->errno = OK;
+    return bytes;
 }
 
-bool
+uint32_t
 pico_set_metadata(PICO * pico, offset_t position, offset_t length,
-                   uint8_t * md) {
-    if (length == 0) {
-        return false;
+                  uint8_t * md) {
+    if (pico == NULL || md == NULL || length == 0) return 0;
+    // Compute the start of the metadata to write.
+    offset_t start = position + KEY_POS + pico->key_length;
+    // Compute the number of bytes we can write.
+    offset_t bytes = pico->offset - start;
+    if (length < bytes) bytes = length;
+    // Perform the write.
+    if (fseek(pico->file, start, SEEK_SET) ||
+            fwrite(md, 1, bytes, pico->file) != bytes) {
+        pico->errno = CANNOT_WRITE;
+        sprintf(pico->error_text, "Cannot write metadata.");
+        DEBUG("Cannot write metadata.");
+        return 0;
     }
-    if (md == NULL) {
-        pico->errno = OK;
-        return true;
-    }
-    if (pico != NULL) {
-        // Compute the start of the metadata to read.
-        offset_t start = position + KEY_POS + pico->key_length;
-        // Compute the number of bytes we can write.
-        offset_t bytes = pico->offset - start;
-        if (length < bytes) bytes = length;
-        // Perform the write.
-        if (fseek(pico->file, start, SEEK_SET) ||
-                fwrite(md, 1, bytes, pico->file) != bytes) {
-            pico->errno = CANNOT_WRITE;
-            sprintf(pico->error_text, "Cannot write metadata.");
-
-        }
-        pico->errno = OK;
-        return length != bytes;
-    }
-    return true;
+    pico->errno = OK;
+    return bytes;
 }
 
 //======================================================================
@@ -766,25 +774,26 @@ pico_errno
 pico_encode_file(char *infile, char *outfile, keylen_t key_length, uint8_t *key,
                  offset_t md_length, FILE *err) {
     if (infile == NULL) {
-        ERR(err, "ERROR: Input file name is NULL.\n");
+        DEBUG("ERROR: Input file name is NULL.\n");
         return USAGE;
     }
     if (outfile == NULL) {
-        ERR(err, "ERROR: Output file name is NULL.\n");
+        DEBUG("ERROR: Output file name is NULL.\n");
         return USAGE;
     }
 
     // Allocate the buffer.
     uint8_t * buffer = MALLOC(uint8_t, CHUNK_SIZE);
     if (buffer == NULL) {
-        ERR(err, "ERROR: Unable to allocate buffer.\n");
+        DEBUG("ERROR: Unable to allocate buffer.\n");
         return NO_MEMORY;
     }
 
     // Open the file to encode.
     FILE * fin = fopen(infile, "r");
     if (fin == NULL) {
-        ERR(err, "ERROR: Unable to open input file.\n");
+        pico_free(buffer);
+        DEBUG("ERROR: Unable to open input file.\n");
         return CANNOT_READ;
     }
 
@@ -792,15 +801,17 @@ pico_encode_file(char *infile, char *outfile, keylen_t key_length, uint8_t *key,
     FILE * fout = fopen(outfile, "w+");
     if (fout == NULL) {
         fclose(fin);
-        ERR(err, "ERROR: Unable to open output file.\n");
+        pico_free(buffer);
+        DEBUG("ERROR: Unable to open output file.\n");
         return CANNOT_WRITE;
     }
-    PICO * pico = pico_new(fout, key_length, key, md_length);
-    if (pico_is_error(pico)) {
-        fclose(fin);
+    PICO * pico = pico_new(fout, key_length, key, md_length, NULL);
+    if (pico == NULL) {
         fclose(fout);
-        ERR(err, "ERROR: %s\n", pico->error_text);
-        return pico->errno;
+        fclose(fin);
+        pico_free(buffer);
+        DEBUG("ERROR: Unable to create Pico file.");
+        return CANNOT_WRITE;
     }
 
     // Read and copy chunks until we fail to read.
@@ -815,11 +826,13 @@ pico_encode_file(char *infile, char *outfile, keylen_t key_length, uint8_t *key,
         pico_set(pico, position, count, buffer);
         position += count;
         if (pico_is_error(pico)) {
+            pico_errno errno = pico->errno;
+            DEBUG("ERROR: %s\n", pico->error_text);
             pico_finish(pico);
             fclose(fout);
             fclose(fin);
-            ERR(err, "ERROR: %s\n", pico->error_text);
-            return pico->errno;
+            pico_free(buffer);
+            return errno;
         }
     } while (count == CHUNK_SIZE);
 
@@ -827,31 +840,33 @@ pico_encode_file(char *infile, char *outfile, keylen_t key_length, uint8_t *key,
     pico_finish(pico);
     fclose(fout);
     fclose(fin);
+    pico_free(buffer);
     return OK;
 }
 
 pico_errno
 pico_decode_file(char *infile, char *outfile, bool testhash, FILE *err) {
     if (infile == NULL) {
-        ERR(err, "ERROR: Input file name is NULL.\n");
+        DEBUG("ERROR: Input file name is NULL.\n");
         return USAGE;
     }
     if (outfile == NULL) {
-        ERR(err, "ERROR: Output file name is NULL.\n");
+        DEBUG("ERROR: Output file name is NULL.\n");
         return USAGE;
     }
 
     // Allocate the buffer.
     uint8_t * buffer = MALLOC(uint8_t, CHUNK_SIZE);
     if (buffer == NULL) {
-        ERR(err, "ERROR: Unable to allocate buffer.\n");
+        DEBUG("ERROR: Unable to allocate buffer.\n");
         return NO_MEMORY;
     }
 
     // Open the file to decode.
     FILE * fin = fopen(infile, "r");
     if (fin == NULL) {
-        ERR(err, "ERROR: Unable to open input file.\n");
+        pico_free(buffer);
+        DEBUG("ERROR: Unable to open input file.\n");
         return CANNOT_READ;
     }
 
@@ -859,17 +874,19 @@ pico_decode_file(char *infile, char *outfile, bool testhash, FILE *err) {
     FILE * fout = fopen(outfile, "w+");
     if (fout == NULL) {
         fclose(fin);
-        ERR(err, "ERROR: Unable to open output file.\n");
+        pico_free(buffer);
+        DEBUG("ERROR: Unable to open output file.\n");
         return CANNOT_WRITE;
     }
 
     // Read the header.
-    PICO * pico = pico_open(fin);
-    if (pico_is_error(pico)) {
-        fclose(fin);
+    PICO * pico = pico_open(fin, NULL);
+    if (pico == NULL) {
         fclose(fout);
-        ERR(err, "ERROR: %s\n", pico->error_text);
-        return pico->errno;
+        fclose(fin);
+        pico_free(buffer);
+        DEBUG("ERROR: Unable to open Pico file.");
+        return CANNOT_READ;
     }
 
     // Initialize the hash computation.
@@ -885,13 +902,15 @@ pico_decode_file(char *infile, char *outfile, bool testhash, FILE *err) {
         count = pico_get(pico, position, CHUNK_SIZE, buffer);
         if (count == 0) break;
         if (pico_is_error(pico)) {
+            pico_errno errno = pico->errno;
             if (testhash) MD5_Final(hash, &md5data);
             pico_finish(pico);
             fclose(fin);
             fflush(fout);
             fclose(fout);
-            ERR(err, "ERROR: %s\n", pico->error_text);
-            return pico->errno;
+            pico_free(buffer);
+            DEBUG("ERROR: %s\n", pico->error_text);
+            return errno;
         }
         if (testhash) MD5_Update(&md5data, buffer, count);
 
@@ -917,5 +936,6 @@ pico_decode_file(char *infile, char *outfile, bool testhash, FILE *err) {
     fclose(fin);
     fflush(fout);
     fclose(fout);
+    pico_free(buffer);
     return hash_match ? OK : HASH_ERROR;
 }

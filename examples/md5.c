@@ -2,6 +2,7 @@
 #include <pico.h>
 #include <string.h>
 int main(int argc, char * argv[]) {
+    pico_debug = 1;
     // Get longest filename.
     size_t max = 10;
     for (int index = 1; index < argc; ++index) {
@@ -17,15 +18,9 @@ int main(int argc, char * argv[]) {
             fprintf(stdout, "Unable to open file.\n");
             continue;
         }
-        PICO * pico = pico_open(file);
+        PICO * pico = pico_open(file, NULL);
         if (pico == NULL) {
             fprintf(stdout, "Unable to decode file.\n");
-            fclose(file);
-            continue;
-        }
-        if (pico_is_error(pico)) {
-            fprintf(stdout, "%s\n", pico->error_text);
-            pico_finish(pico);
             fclose(file);
             continue;
         }

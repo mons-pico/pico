@@ -93,6 +93,14 @@ typedef struct {
     char error_text[1024];      ///< Error text.
     uint32_t md_length;         ///< Reserved metadata length.
     size_t data_length;         ///< Data length (unused).
+    bool valid;                 ///< Whether the header is valid.
+
+    /* Header validity is used to signal whether or not the library should
+     * attempt to clean up the header on finish.  If valid, then a correctly
+     * formed header was read (or constructed) and the system should try to
+     * clean up, possibly computing the hash.  If not valid, then the header
+     * is disregarded and simply deallocated on finish.
+     */
 
 } PICO;
 
