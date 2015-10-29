@@ -15,8 +15,16 @@ if( UNIX )
     set_target_properties(cpico_static PROPERTIES OUTPUT_NAME cpico)
 endif ( UNIX )
 add_executable(pico-bin src/main.c)
-target_link_libraries(pico-bin cpico_static )
+target_link_libraries(pico-bin cpico_static)
 set_target_properties(pico-bin PROPERTIES OUTPUT_NAME pico)
+
+# Examples.
+add_executable(header_ex examples/header.c)
+target_link_libraries(header_ex cpico_static)
+add_executable(md5_ex examples/md5.c)
+target_link_libraries(md5_ex cpico_static)
+add_custom_target(example)
+add_dependencies(example header_ex md5_ex)
 
 # Generate API documentation using Doxygen.
 find_package(Doxygen)
