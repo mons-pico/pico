@@ -1,6 +1,7 @@
+# C Pico library
+
 [![Build Status](https://travis-ci.org/sprowell/pico.svg?branch=master)](https://travis-ci.org/sprowell/pico)
 
-# C Pico library
 The Pico encoding is intended for packaging malicious software to prevent it
 from running, and also to protect it from detection and damage due to
 anti-malware software.  The format is simple and (unlike compression) provides
