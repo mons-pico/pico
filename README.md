@@ -9,8 +9,7 @@ quick direct access to the unencrypted bytes.
 Read about the format [here][mons-pico].
 
 This library provides a C API for Pico encoding and decoding files, and for
-working with those files.  At present everything is implemented, except for
-hashing.
+working with those files.
 
 More information can be found [in the docs folder](docs/).
 
