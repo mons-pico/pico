@@ -18,7 +18,7 @@
 
 #include "test-frame.h"
 #include <pico.h>
-#include <assert.h>
+#include <stdlib.h>
 #include <sys/errno.h>
 
 typedef uint8_t byte;
