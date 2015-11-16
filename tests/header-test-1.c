@@ -18,7 +18,6 @@
 
 #include "test-frame.h"
 #include <pico.h>
-#include <stdlib.h>
 #include <sys/errno.h>
 
 typedef uint8_t byte;
