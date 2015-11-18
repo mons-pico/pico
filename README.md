@@ -2,8 +2,8 @@
 
 |Branch      |Status   |
 |------------|---------|
-|master      | [![Build Status](https://travis-ci.org/sprowell/pico.svg?branch=master)](https://travis-ci.org/sprowell/pico) |
-|dev         | [![Build Status](https://travis-ci.org/sprowell/pico.svg?branch=dev)](https://travis-ci.org/sprowell/pico) |
+|master      | [![Build Status](https://travis-ci.org/mons-pico/pico.svg?branch=master)](https://travis-ci.org/mons-pico/pico) |
+|dev         | [![Build Status](https://travis-ci.org/mons-pico/pico.svg?branch=dev)](https://travis-ci.org/mons-pico/pico) |
 
 **Branch Policy:**
 
