@@ -19,6 +19,8 @@
 #include <getopt.h>
 #include <string.h>
 #include <pico.h>
+#include <ctype.h>
+#include <stdlib.h>
 
 /**
  * Print usage information for the command line executable.
@@ -32,11 +34,13 @@ print_usage(char * name) {
     fprintf(stdout, "from a Pico-encoded file.\n");
     fprintf(stdout, "\n");
     fprintf(stdout, "Flags:\n");
+    fprintf(stdout, "  --debug .................. Enable debugging.\n");
     fprintf(stdout, "  -d / --decode ............ Decode files.\n");
     fprintf(stdout, "  -e / --encode ............ Encode files (default).\n");
     fprintf(stdout, "  --extension=[ext] ........ Set output file extension.\n");
     fprintf(stdout, "  -h / --help .............. Print this help information.\n");
     fprintf(stdout, "  -H / --header=[kind] ..... Dump header information.\n");
+    fprintf(stdout, "  -k / --key=[key] ......... Use the given key for encryption.\n");
     fprintf(stdout, "  -s / --suffix=[suffix] ... Suffix to add to output files.\n");
     fprintf(stdout, "\n");
     //               0123456789012345678901234567890123456789012345678901234567890123456789
@@ -50,6 +54,8 @@ print_usage(char * name) {
     fprintf(stdout, "base name.\n");
     fprintf(stdout, "\n");
     fprintf(stdout, "The header kinds can be json, yaml, python, or xml.");
+    fprintf(stdout, "\n");
+    fprintf(stdout, "Keys must be specified as a list of hexadecimal digits (no spaces).\n");
     fprintf(stdout, "\n");
     fprintf(stdout, "Pico encoding version: %d.%d.\n", VERSION_MAJOR, VERSION_MINOR);
     fprintf(stdout, "Using CPico library built: %s\n", pico_build());
@@ -65,14 +71,22 @@ print_usage(char * name) {
 int
 main(int argc, char * argv[]) {
     // Information we get from the command line.
-    char * suffix = "";
-    bool encode = true;
-    bool header = false;
-    bool quiet = false;
-    char * myname = argv[0];
-    char * extension = NULL;
-    int argument = 0;
+    char * suffix = "";         ///< The suffix, if provided.
+    char * tkey = NULL;         ///< Text key.
+    uint8_t * bkey = NULL;      ///< Decoded "binary" key.
+    keylen_t keylen = 0;        ///< Key length in bytes.
+    bool encode = true;         ///< True to encode.
+    bool header = false;        ///< True to dump header.
+    bool quiet = false;         ///< True to suppress messages.
+    char * myname = argv[0];    ///< The name of this executable.
+    char * extension = NULL;    ///< The extension, if provided.
+    int argument = 0;           ///< An argument.
     header_format_t kind = PYTHON_DICT;
+    uint8_t default_key[8] = {
+            (uint8_t)0x21, (uint8_t)0x18, (uint8_t)0xF5, (uint8_t)0xE5,
+            (uint8_t)0x59, (uint8_t)0x64, (uint8_t)0x79, (uint8_t)0xAA,
+    };
+    keylen_t default_keylen = sizeof(default_key) / sizeof(uint8_t);
 
     // Process the arguments.
     static const char * optstring = "dehH:s:q";
@@ -83,6 +97,7 @@ main(int argc, char * argv[]) {
             { "extension", required_argument, NULL, 0 },
             { "help", no_argument, NULL, 'h' },
             { "header", required_argument, NULL, 'H' },
+            { "key", required_argument, NULL, 'k' },
             { "suffix", required_argument, NULL, 's' },
             { "quiet", no_argument, NULL, 'q' },
             { NULL, 0, NULL, 0 }
@@ -121,6 +136,40 @@ main(int argc, char * argv[]) {
                 }
                 break;
 
+            case 'k':
+                for (tkey = optarg; *tkey = (char) tolower(*tkey), *tkey; ++tkey);
+                tkey = optarg;
+                {
+                    size_t len = strlen(tkey);
+                    if (len % 2 != 0) {
+                        fprintf(stderr, "ERROR: Key must be an even number of hex digits.\n");
+                        return 1;
+                    }
+                    if (len == 0) {
+                        fprintf(stderr, "ERROR: Key cannot be empty.\n");
+                        return 1;
+                    }
+                    if (len > 64) {
+                        fprintf(stderr, "ERROR: Key length cannot be greater than 32 bytes (64 digits).\n");
+                        return 1;
+                    }
+                    bkey = (uint8_t *)calloc(sizeof(uint8_t), len / 2);
+                    for (size_t index = 0; index < len / 2; ++index) {
+                        uint8_t d1 = (uint8_t)tkey[index*2] - (uint8_t)'0';
+                        uint8_t d2 = (uint8_t)tkey[index*2+1] - (uint8_t)'0';
+                        if (d1 > 9) d1 += ((uint8_t)'0' - (uint8_t)'a' + 10);
+                        if (d2 > 9) d2 += ((uint8_t)'0' - (uint8_t)'a' + 10);
+                        if (d1 < 0 || d1 > 15 || d2 < 0 || d2 > 16) {
+                            fprintf(stderr, "ERROR: Non-hex digit in key at pair %1c%1c.\n",
+                                    tkey[index*2], tkey[index*2+1]);
+                            return 1;
+                        }
+                        bkey[index] = d1*(uint8_t)16+d2;
+                        ++keylen;
+                    } // Convert all digits.
+                }
+                break;
+
             case 's':
                 suffix = optarg;
                 break;
@@ -151,11 +200,21 @@ main(int argc, char * argv[]) {
         extension = (encode ? ".pico" : ".raw");
     }
 
+    // If there was no key, use a default one now.
+    if (bkey == NULL) {
+        bkey = default_key;
+        keylen = default_keylen;
+    }
+
     if (pico_debug) {
         DEBUG("Encoding: %d", encode);
         DEBUG("Suffix: %s", suffix);
         DEBUG("Header: %d", header);
         DEBUG("Extension: %s", extension);
+        DEBUG("Key: ");
+        for (size_t index = 0; index < keylen; ++index) {
+            DEBUG("    %02X", *(bkey + index));
+        } // Write all bytes.
         DEBUG("Arguments:");
         for (int index = optind; index < argc; ++index) {
             DEBUG("  -> %s", argv[index]);
@@ -164,8 +223,6 @@ main(int argc, char * argv[]) {
 
     // Process all files.
     offset_t md_length = 0;
-    keylen_t keylen = 4;
-    uint8_t key[4] = { 0x43, 0x2E, 0xE5, 0x04 };
     const size_t addlen = strlen(extension) + strlen(suffix);
     for (int index = optind; index < argc; ++index) {
         if (strlen(argv[index]) == 0) continue;
@@ -227,7 +284,7 @@ main(int argc, char * argv[]) {
         // Process the file.
         if (encode) {
             pico_errno errno =
-                    pico_encode_file(argv[index], outname, keylen, key,
+                    pico_encode_file(argv[index], outname, keylen, bkey,
                                      md_length, stderr);
             if (errno != OK) {
                 fprintf(stderr, "ERROR: Error detected on file encode.\n");

@@ -1,6 +1,18 @@
-[![Build Status](https://travis-ci.org/sprowell/pico.svg?branch=master)](https://travis-ci.org/sprowell/pico)
-
 # C Pico library
+
+|Branch      |Status   |
+|------------|---------|
+|master      | [![Build Status](https://travis-ci.org/sprowell/pico.svg?branch=master)](https://travis-ci.org/sprowell/pico) |
+|dev         | [![Build Status](https://travis-ci.org/sprowell/pico.svg?branch=dev)](https://travis-ci.org/sprowell/pico) |
+
+**Branch Policy:**
+
+ - The "master" branch is intended to be stable at all times.
+ - The "dev" branch is the one where all contributions must be merged before
+   being promoted to master.
+    + If you plan to propose a patch, please commit into the "dev" branch or a
+      separate feature branch.  Direct commit to "master" will not be accepted.
+
 The Pico encoding is intended for packaging malicious software to prevent it
 from running, and also to protect it from detection and damage due to
 anti-malware software.  The format is simple and (unlike compression) provides

@@ -23,7 +23,6 @@
 #include <string.h>
 #include <inttypes.h>
 #include <pico.h>
-#include <pico_defs.h>
 #include "md5.h"
 
 
@@ -99,7 +98,6 @@ print_array(void *thing, size_t length, bool hex, FILE *out) {
  */
 static void
 print_hexstring(void *thing, size_t length, FILE *out) {
-    bool first = true;
     for (size_t index = 0; index < length; ++index) {
         fprintf(out, "%02X", *((uint8_t *)(thing + index)));
     } // Write all bytes.
@@ -148,8 +146,9 @@ print_int(void *thing, size_t length, bool hex, FILE *out) {
  * @param position     The position of the data in the overall data stream.
  * @return             The data.
  */
-uint8_t * crypt(uint8_t * data, size_t len, uint8_t * key, keylen_t keylen,
-                size_t position) {
+uint8_t *
+pico_crypt(uint8_t *data, size_t len, uint8_t *key, keylen_t keylen,
+           size_t position) {
     for (size_t index = 0; index < len; index++) {
         data[index] ^= key[(size_t)(index+position) % keylen];
     } /* Process all bytes. */
@@ -729,7 +728,7 @@ pico_get(PICO * pico, size_t position, size_t length, uint8_t * buffer) {
     pico->errno = OK;
 
     // Decode the bytes.
-    crypt(buffer, bytes, pico->key, pico->key_length, position);
+    pico_crypt(buffer, bytes, pico->key, pico->key_length, position);
     return bytes;
 }
 
@@ -746,7 +745,7 @@ pico_set(PICO * pico, size_t position, size_t length, uint8_t * data) {
         return 0;
     }
     memcpy(copy, data, length);
-    crypt(copy, length, pico->key, pico->key_length, position);
+    pico_crypt(copy, length, pico->key, pico->key_length, position);
     // Move to the correct position in the file and write the data.  We
     // also invalidate the hash here.  Maybe.  If we write sequentially
     // then there is no need; we can just update the hash.  Right now
